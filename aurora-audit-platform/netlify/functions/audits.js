@@ -1,39 +1,65 @@
 exports.handler = async (event, context) => {
-  // Check authentication
-  const { user } = context.clientContext;
-  if (!user) {
+  const { httpMethod, path, body } = event;
+
+  // CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE',
+    'Content-Type': 'application/json',
+  };
+
+  // Handle preflight
+  if (httpMethod === 'OPTIONS') {
     return {
-      statusCode: 401,
-      body: JSON.stringify({ error: 'Unauthorized' }),
+      statusCode: 200,
+      headers,
+      body: '',
     };
   }
 
-  const { httpMethod, path, body } = event;
+  // Sample data
+  const sampleAudits = [
+    {
+      id: '1',
+      title: 'Sample Audit 1',
+      status: 'in_progress',
+      createdAt: new Date().toISOString(),
+      assignedTo: 'John Doe',
+    },
+    {
+      id: '2',
+      title: 'Sample Audit 2',
+      status: 'completed',
+      createdAt: new Date().toISOString(),
+      assignedTo: 'Jane Smith',
+    },
+  ];
 
-  // Handle different HTTP methods
   switch (httpMethod) {
     case 'GET':
       return {
         statusCode: 200,
-        body: JSON.stringify({
-          audits: [],
-          message: 'Audits retrieved successfully',
-        }),
+        headers,
+        body: JSON.stringify(sampleAudits),
       };
     
     case 'POST':
-      const data = JSON.parse(body);
+      const newAudit = JSON.parse(body);
       return {
         statusCode: 201,
+        headers,
         body: JSON.stringify({
-          audit: { id: Date.now().toString(), ...data },
-          message: 'Audit created successfully',
+          id: Date.now().toString(),
+          ...newAudit,
+          createdAt: new Date().toISOString(),
         }),
       };
     
     default:
       return {
         statusCode: 405,
+        headers,
         body: JSON.stringify({ error: 'Method not allowed' }),
       };
   }

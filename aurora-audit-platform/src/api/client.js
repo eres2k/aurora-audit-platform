@@ -1,5 +1,4 @@
 import axios from 'axios';
-import netlifyIdentity from 'netlify-identity-widget';
 
 const API_URL = process.env.REACT_APP_API_URL || '/.netlify/functions';
 
@@ -10,12 +9,12 @@ const client = axios.create({
   },
 });
 
-// Add auth token to requests
+// Add auth token to requests if available
 client.interceptors.request.use(
   (config) => {
-    const user = netlifyIdentity.currentUser();
-    if (user?.token?.access_token) {
-      config.headers.Authorization = `Bearer ${user.token.access_token}`;
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -29,7 +28,8 @@ client.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      netlifyIdentity.logout();
+      // Handle unauthorized access
+      localStorage.removeItem('auth_token');
       window.location.href = '/login';
     }
     return Promise.reject(error);

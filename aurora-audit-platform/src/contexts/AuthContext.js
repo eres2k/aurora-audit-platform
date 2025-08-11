@@ -1,40 +1,31 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import netlifyIdentity from 'netlify-identity-widget';
+import React, { createContext, useState, useEffect } from 'react';
 
-const AuthContext = createContext({});
+export const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    netlifyIdentity.init();
-    
-    const currentUser = netlifyIdentity.currentUser();
-    setUser(currentUser);
+    // Check for existing auth
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      // In a real app, validate token with backend
+      setUser({ email: 'user@example.com' });
+    }
     setLoading(false);
-
-    netlifyIdentity.on('login', (user) => {
-      setUser(user);
-      netlifyIdentity.close();
-    });
-
-    netlifyIdentity.on('logout', () => {
-      setUser(null);
-    });
-
-    return () => {
-      netlifyIdentity.off('login');
-      netlifyIdentity.off('logout');
-    };
   }, []);
 
-  const login = () => {
-    netlifyIdentity.open();
+  const login = (email, password) => {
+    // Simulated login
+    localStorage.setItem('auth_token', 'dummy-token');
+    setUser({ email });
   };
 
   const logout = () => {
-    netlifyIdentity.logout();
+    localStorage.removeItem('auth_token');
+    setUser(null);
+    window.location.href = '/login';
   };
 
   const value = {
@@ -46,12 +37,4 @@ export const AuthProvider = ({ children }) => {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
 };
