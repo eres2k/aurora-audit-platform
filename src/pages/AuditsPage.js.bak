@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import CreateAuditDialog from '../components/audit/CreateAuditDialog';
 
 const AuditsPage = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [audits] = useState([]);
 
