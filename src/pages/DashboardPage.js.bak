@@ -25,7 +25,7 @@ import {
   ArrowUpward,
   ArrowDownward,
 } from '@mui/icons-material';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { auditService } from '../services/auditService';
 
