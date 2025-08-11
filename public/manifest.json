@@ -1,7 +1,6 @@
 {
   "short_name": "Aurora Audit",
   "name": "Aurora Audit Platform",
-  "description": "Professional auditing system with multi-user support and comprehensive reporting",
   "icons": [
     {
       "src": "favicon.ico",
@@ -11,66 +10,16 @@
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any maskable"
+      "sizes": "192x192"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any maskable"
+      "sizes": "512x512"
     }
   ],
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#2196F3",
-  "background_color": "#ffffff",
-  "orientation": "portrait-primary",
-  "scope": "/",
-  "categories": ["business", "productivity", "utilities"],
-  "screenshots": [
-    {
-      "src": "/screenshots/dashboard.png",
-      "type": "image/png",
-      "sizes": "1280x720",
-      "label": "Dashboard View"
-    },
-    {
-      "src": "/screenshots/audits.png",
-      "type": "image/png",
-      "sizes": "1280x720",
-      "label": "Audits Management"
-    },
-    {
-      "src": "/screenshots/mobile.png",
-      "type": "image/png",
-      "sizes": "750x1334",
-      "label": "Mobile View"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "New Audit",
-      "short_name": "New",
-      "description": "Create a new audit",
-      "url": "/audits/new",
-      "icons": [{ "src": "/icons/new-audit.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Dashboard",
-      "short_name": "Dashboard",
-      "description": "View dashboard",
-      "url": "/dashboard",
-      "icons": [{ "src": "/icons/dashboard.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Reports",
-      "short_name": "Reports",
-      "description": "View reports",
-      "url": "/reports",
-      "icons": [{ "src": "/icons/reports.png", "sizes": "192x192" }]
-    }
-  ],
-  "prefer_related_applications": false,
-  "related_applications": []
+  "background_color": "#ffffff"
 }
