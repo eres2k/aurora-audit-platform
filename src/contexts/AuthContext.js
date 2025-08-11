@@ -1,10 +1,10 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 
 export const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Check for existing auth
@@ -15,9 +15,9 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = (email, password) => {
+  const login = () => {
     localStorage.setItem('auth_token', 'dummy-token');
-    setUser({ email });
+    setUser({ email: 'user@example.com' });
   };
 
   const logout = () => {
@@ -34,4 +34,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+// EXPORT useAuth FROM HERE TOO
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    return {
+      user: null,
+      loading: false,
+      login: () => {},
+      logout: () => {},
+      isAuthenticated: false,
+    };
+  }
+  return context;
 };

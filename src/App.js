@@ -1,76 +1,38 @@
-import React, { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import { DataProvider } from './contexts/DataContext';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { NotificationProvider } from './contexts/NotificationContext';
-import ErrorBoundary from './components/shared/ErrorBoundary';
-import LoadingScreen from './components/shared/LoadingScreen';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './components/common/Layout';
 import PrivateRoute from './components/auth/PrivateRoute';
-
-// Lazy load components for better performance
-const Login = lazy(() => import('./components/auth/Login'));
-const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
-const AuditList = lazy(() => import('./components/audits/AuditList'));
-const AuditDetail = lazy(() => import('./components/audits/AuditDetail'));
-const AuditForm = lazy(() => import('./components/audits/AuditForm'));
-const QuestionBank = lazy(() => import('./components/questions/QuestionBank'));
-const Templates = lazy(() => import('./components/templates/Templates'));
-const Reports = lazy(() => import('./components/reports/Reports'));
-const Settings = lazy(() => import('./components/settings/Settings'));
-const Profile = lazy(() => import('./components/profile/Profile'));
-const NotFound = lazy(() => import('./components/shared/NotFound'));
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import AuditsPage from './pages/AuditsPage';
+import AuditDetailPage from './pages/AuditDetailPage';
+import QuestionsPage from './pages/QuestionsPage';
+import TemplatesPage from './pages/TemplatesPage';
+import ReportsPage from './pages/ReportsPage';
+import SettingsPage from './pages/SettingsPage';
+import { useAuth } from './contexts/AuthContext';
 
 function App() {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <AuthProvider>
-          <NotificationProvider>
-            <DataProvider>
-              <Router>
-                <Suspense fallback={<LoadingScreen />}>
-                  <Routes>
-                    {/* Public Routes */}
-                    <Route path="/login" element={<Login />} />
-                    
-                    {/* Protected Routes */}
-                    <Route path="/" element={<PrivateRoute />}>
-                      <Route index element={<Navigate to="/dashboard" replace />} />
-                      <Route path="dashboard" element={<Dashboard />} />
-                      
-                      {/* Audit Routes */}
-                      <Route path="audits">
-                        <Route index element={<AuditList />} />
-                        <Route path="new" element={<AuditForm />} />
-                        <Route path=":id" element={<AuditDetail />} />
-                        <Route path=":id/edit" element={<AuditForm />} />
-                      </Route>
-                      
-                      {/* Question Routes */}
-                      <Route path="questions" element={<QuestionBank />} />
-                      
-                      {/* Template Routes */}
-                      <Route path="templates" element={<Templates />} />
-                      
-                      {/* Report Routes */}
-                      <Route path="reports" element={<Reports />} />
-                      
-                      {/* User Routes */}
-                      <Route path="profile" element={<Profile />} />
-                      <Route path="settings" element={<Settings />} />
-                    </Route>
-                    
-                    {/* 404 Route */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Suspense>
-              </Router>
-            </DataProvider>
-          </NotificationProvider>
-        </AuthProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="audits" element={<AuditsPage />} />
+        <Route path="audits/:id" element={<AuditDetailPage />} />
+        <Route path="questions" element={<QuestionsPage />} />
+        <Route path="templates" element={<TemplatesPage />} />
+        <Route path="reports" element={<ReportsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
+    </Routes>
   );
 }
 
