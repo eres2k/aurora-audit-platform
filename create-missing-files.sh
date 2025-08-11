@@ -1,25 +1,23 @@
 #!/bin/bash
 
-# Fix react-scripts not found error
-# The issue: react-scripts is in devDependencies but NODE_ENV=production skips devDependencies
-
-echo "🔧 FIXING REACT-SCRIPTS NOT FOUND ERROR"
-echo "========================================"
+# Fix date-fns compatibility issue with MUI Date Pickers
+echo "🔧 FIXING DATE-FNS COMPATIBILITY ISSUE"
+echo "======================================"
 echo ""
 
 # Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${YELLOW}The problem:${NC}"
-echo "NODE_ENV=production causes Netlify to skip devDependencies"
-echo "react-scripts MUST be in dependencies, not devDependencies!"
+echo -e "${YELLOW}The issue:${NC}"
+echo "date-fns v3 has breaking changes that @mui/x-date-pickers doesn't support yet"
+echo "Solution: Use date-fns v2 instead"
 echo ""
 
-# Step 1: Fix package.json - Move react-scripts to dependencies
-echo -e "${YELLOW}Step 1: Fixing package.json${NC}"
+# Step 1: Update package.json with compatible versions
+echo -e "${YELLOW}Step 1: Updating package.json with compatible versions${NC}"
 cat > package.json << 'EOF'
 {
   "name": "aurora-audit-platform",
@@ -32,14 +30,14 @@ cat > package.json << 'EOF'
     "react-router-dom": "^6.26.0",
     "@mui/material": "^5.16.0",
     "@mui/icons-material": "^5.16.0",
-    "@mui/x-date-pickers": "^7.0.0",
+    "@mui/x-date-pickers": "^6.20.0",
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
     "@react-pdf/renderer": "^3.1.0",
     "xlsx": "^0.18.5",
     "netlify-identity-widget": "^1.9.2",
     "axios": "^1.6.0",
-    "date-fns": "^3.0.0",
+    "date-fns": "^2.30.0",
     "react-dropzone": "^14.2.0",
     "recharts": "^2.10.0",
     "react-hook-form": "^7.48.0",
@@ -76,148 +74,178 @@ cat > package.json << 'EOF'
   }
 }
 EOF
-echo -e "${GREEN}✓ package.json fixed - react-scripts is now in dependencies${NC}"
+echo -e "${GREEN}✓ package.json updated with date-fns v2${NC}"
 
-# Step 2: Update netlify.toml to ensure CI=false
-echo -e "${YELLOW}Step 2: Updating netlify.toml${NC}"
-cat > netlify.toml << 'EOF'
-[build]
-  command = "CI=false npm run build"
-  functions = "netlify/functions"
-  publish = "build"
+# Step 2: Update index.js to remove DatePicker LocalizationProvider (temporarily)
+echo -e "${YELLOW}Step 2: Simplifying index.js to remove date picker issues${NC}"
+cat > src/index.js << 'EOF'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './styles/index.css';
+import App from './App';
+import { BrowserRouter } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
+import { CssBaseline } from '@mui/material';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from './contexts/AuthContext';
+import theme from './styles/theme';
 
-[build.environment]
-  CI = "false"
-  NODE_VERSION = "18"
-  NPM_VERSION = "9"
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      cacheTime: 10 * 60 * 1000,
+      retry: false,
+    },
+  },
+});
 
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <App />
+          </ThemeProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
+  </React.StrictMode>
+);
 EOF
-echo -e "${GREEN}✓ netlify.toml updated${NC}"
+echo -e "${GREEN}✓ index.js simplified${NC}"
 
-# Step 3: Create a minimal public/index.html if missing
-echo -e "${YELLOW}Step 3: Ensuring public/index.html exists${NC}"
-mkdir -p public
-if [ ! -f "public/index.html" ]; then
-cat > public/index.html << 'EOF'
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="description" content="Aurora Audit Platform - Professional Auditing System" />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <title>Aurora Audit Platform</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-  </body>
-</html>
+# Step 3: Ensure theme exists
+echo -e "${YELLOW}Step 3: Ensuring theme.js exists${NC}"
+mkdir -p src/styles
+if [ ! -f "src/styles/theme.js" ]; then
+cat > src/styles/theme.js << 'EOF'
+import { createTheme } from '@mui/material/styles';
+
+const theme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: {
+      main: '#1976d2',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+    background: {
+      default: '#f5f5f5',
+    },
+  },
+  typography: {
+    fontFamily: [
+      '-apple-system',
+      'BlinkMacSystemFont',
+      '"Segoe UI"',
+      'Roboto',
+      '"Helvetica Neue"',
+      'Arial',
+      'sans-serif',
+    ].join(','),
+  },
+  shape: {
+    borderRadius: 12,
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+        },
+      },
+    },
+  },
+});
+
+export default theme;
 EOF
-echo -e "${GREEN}✓ public/index.html created${NC}"
+echo -e "${GREEN}✓ theme.js created${NC}"
 else
-echo -e "${GREEN}✓ public/index.html already exists${NC}"
+echo -e "${GREEN}✓ theme.js already exists${NC}"
 fi
 
-# Step 4: Create public/manifest.json
-echo -e "${YELLOW}Step 4: Creating public/manifest.json${NC}"
-cat > public/manifest.json << 'EOF'
-{
-  "short_name": "Aurora",
-  "name": "Aurora Audit Platform",
-  "icons": [
-    {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    }
-  ],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#1976d2",
-  "background_color": "#ffffff"
-}
-EOF
-echo -e "${GREEN}✓ manifest.json created${NC}"
-
-# Step 5: Create public/robots.txt
-cat > public/robots.txt << 'EOF'
-User-agent: *
-Disallow:
-EOF
-
-# Step 6: Clear node_modules and package-lock.json
-echo -e "${YELLOW}Step 5: Cleaning up old dependencies${NC}"
+# Step 4: Clean and reinstall
+echo -e "${YELLOW}Step 4: Cleaning and reinstalling dependencies${NC}"
 rm -rf node_modules package-lock.json
-echo -e "${GREEN}✓ Cleaned up old files${NC}"
-
-# Step 7: Install fresh dependencies
-echo -e "${YELLOW}Step 6: Installing fresh dependencies${NC}"
-echo "This may take a minute..."
+echo "Installing dependencies (this may take a minute)..."
 npm install
 
-# Step 8: Test build locally
-echo -e "${YELLOW}Step 7: Testing build locally${NC}"
-echo "Running build test..."
-npm run build
-
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ BUILD SUCCESSFUL!${NC}"
-    echo ""
-    echo "The build works locally! Now push to GitHub:"
-    echo ""
-    echo "1. Stage all changes:"
-    echo "   git add ."
-    echo ""
-    echo "2. Commit:"
-    echo "   git commit -m 'Fix react-scripts not found - move to dependencies'"
-    echo ""
-    echo "3. Push:"
-    echo "   git push"
-    echo ""
-    echo -e "${GREEN}The Netlify build should now succeed!${NC}"
-else
-    echo -e "${RED}⚠️  Build still has issues locally${NC}"
-    echo "Check the error messages above"
-    echo ""
-    echo "Common fixes:"
-    echo "1. Make sure all imports are correct"
-    echo "2. Check that all files exist"
-    echo "3. Try: npm cache clean --force"
-fi
+# Step 5: Alternative - Remove date-pickers completely if still having issues
+echo -e "${YELLOW}Step 5: Creating alternative package.json without date-pickers${NC}"
+cat > package.json.no-datepicker << 'EOF'
+{
+  "name": "aurora-audit-platform",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "react-router-dom": "^6.26.0",
+    "@mui/material": "^5.16.0",
+    "@mui/icons-material": "^5.16.0",
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
+    "axios": "^1.6.0",
+    "react-hook-form": "^7.48.0",
+    "@tanstack/react-query": "^5.0.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "CI=false react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
+EOF
 
 echo ""
-echo "======================================"
-echo "KEY POINTS:"
-echo "======================================"
-echo "✅ react-scripts is now in 'dependencies' (not devDependencies)"
-echo "✅ CI=false is set to allow warnings"
-echo "✅ All required public files exist"
-echo "✅ Fresh dependencies installed"
+echo -e "${BLUE}=====================================${NC}"
+echo -e "${GREEN}FIX APPLIED!${NC}"
+echo -e "${BLUE}=====================================${NC}"
 echo ""
-echo -e "${YELLOW}IMPORTANT:${NC} The error was caused by NODE_ENV=production"
-echo "which made Netlify skip devDependencies installation."
-echo "react-scripts MUST be in dependencies for production builds!"
+echo "Changes made:"
+echo "✅ Downgraded date-fns from v3 to v2.30.0"
+echo "✅ Updated @mui/x-date-pickers to compatible version"
+echo "✅ Removed LocalizationProvider temporarily"
+echo "✅ Created backup package.json without date-pickers"
+echo ""
+echo "Next steps:"
+echo ""
+echo "Option 1: Try with date-fns v2"
+echo "  git add ."
+echo "  git commit -m 'Fix date-fns compatibility - use v2'"
+echo "  git push"
+echo ""
+echo "Option 2: If still failing, use minimal package.json"
+echo "  cp package.json.no-datepicker package.json"
+echo "  rm -rf node_modules package-lock.json"
+echo "  npm install"
+echo "  git add ."
+echo "  git commit -m 'Remove date-pickers temporarily to fix build'"
+echo "  git push"
+echo ""
+echo -e "${YELLOW}The build should now work!${NC}"

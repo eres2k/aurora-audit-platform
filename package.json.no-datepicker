@@ -5,37 +5,26 @@
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
     "react-router-dom": "^6.26.0",
     "@mui/material": "^5.16.0",
+    "@mui/icons-material": "^5.16.0",
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
-    "@react-pdf/renderer": "^3.1.0",
-    "xlsx": "^0.18.5",
-    "netlify-identity-widget": "^1.9.2",
     "axios": "^1.6.0",
-    "date-fns": "^3.0.0",
-    "react-dropzone": "^14.2.0",
-    "recharts": "^2.10.0",
     "react-hook-form": "^7.48.0",
-    "@tanstack/react-query": "^5.0.0",
-    "zustand": "^4.4.0",
-    "@mui/x-date-pickers": "^7.0.0",
-    "@mui/icons-material": "^5.16.0"
+    "@tanstack/react-query": "^5.0.0"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "CI=false react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "lint": "eslint src/**/*.{js,jsx}"
+    "eject": "react-scripts eject"
   },
-  "devDependencies": {
-    "react-scripts": "5.0.1",
-    "@testing-library/react": "^14.0.0",
-    "@testing-library/jest-dom": "^6.1.0",
-    "@testing-library/user-event": "^14.0.0",
-    "eslint": "^8.50.0",
-    "prettier": "^3.0.0"
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
   },
   "browserslist": {
     "production": [
@@ -47,11 +36,6 @@
       "last 1 chrome version",
       "last 1 firefox version",
       "last 1 safari version"
-    ]
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app"
     ]
   }
 }
