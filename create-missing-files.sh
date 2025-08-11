@@ -1,237 +1,79 @@
 #!/bin/bash
 
-echo "🔧 Fixing all Context files with proper exports..."
+echo "🎨 Installing Tailwind CSS properly for production..."
 
-# Fix ThemeContext.js
-cat > src/contexts/ThemeContext.js << 'EOF'
-import React, { createContext, useContext, useState, useEffect } from 'react';
+# Step 1: Install Tailwind and its dependencies
+npm install -D tailwindcss postcss autoprefixer
 
-const ThemeContext = createContext();
+# Step 2: Initialize Tailwind
+npx tailwindcss init -p
 
-export function ThemeProvider({ children }) {
-  const [darkMode, setDarkMode] = useState(false);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      setDarkMode(true);
-      document.documentElement.classList.add('dark');
+# Step 3: Update tailwind.config.js
+cat > tailwind.config.js << 'EOF'
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+    "./public/index.html"
+  ],
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          50: '#EFF6FF',
+          100: '#DBEAFE',
+          200: '#BFDBFE',
+          300: '#93C5FD',
+          400: '#60A5FA',
+          500: '#3B82F6',
+          600: '#2563EB',
+          700: '#1D4ED8',
+          800: '#1E40AF',
+          900: '#1E3A8A'
+        }
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-in-out',
+        'slide-up': 'slideUp 0.3s ease-out',
+        'slide-down': 'slideDown 0.3s ease-out',
+        'scale-in': 'scaleIn 0.2s ease-out'
+      }
     }
-  }, []);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    if (!darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  };
-
-  const value = { darkMode, setDarkMode, toggleDarkMode };
-
-  return (
-    <ThemeContext.Provider value={value}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  },
+  plugins: [],
 }
-
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
-}
-
-export default ThemeContext;
 EOF
 
-# Fix AuthContext.js
-cat > src/contexts/AuthContext.js << 'EOF'
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import netlifyIdentity from 'netlify-identity-widget';
+# Step 4: Update src/index.css to include Tailwind
+cat > src/index.css << 'EOF'
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-const AuthContext = createContext();
-
-// Initialize Netlify Identity
-if (typeof window !== 'undefined') {
-  netlifyIdentity.init();
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check for existing user
-    const currentUser = netlifyIdentity.currentUser();
-    setUser(currentUser);
-    setLoading(false);
-
-    // Set up event listeners
-    netlifyIdentity.on('login', (user) => {
-      setUser(user);
-      netlifyIdentity.close();
-    });
-
-    netlifyIdentity.on('logout', () => {
-      setUser(null);
-    });
-
-    return () => {
-      netlifyIdentity.off('login');
-      netlifyIdentity.off('logout');
-    };
-  }, []);
-
-  const login = () => {
-    netlifyIdentity.open('login');
-  };
-
-  const logout = () => {
-    netlifyIdentity.logout();
-  };
-
-  const signup = () => {
-    netlifyIdentity.open('signup');
-  };
-
-  const value = {
-    user,
-    login,
-    logout,
-    signup,
-    loading,
-    isAuthenticated: !!user
-  };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+* {
+  box-sizing: border-box;
 }
 
-export default AuthContext;
+html {
+  scroll-behavior: smooth;
+}
 EOF
 
-# Fix DataContext.js
-cat > src/contexts/DataContext.js << 'EOF'
-import React, { createContext, useContext, useState } from 'react';
-
-const DataContext = createContext();
-
-export function DataProvider({ children }) {
-  const [audits, setAudits] = useState([]);
-  const [questions, setQuestions] = useState([]);
-  const [templates, setTemplates] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const value = {
-    audits,
-    setAudits,
-    questions,
-    setQuestions,
-    templates,
-    setTemplates,
-    loading,
-    setLoading,
-    error,
-    setError
-  };
-
-  return (
-    <DataContext.Provider value={value}>
-      {children}
-    </DataContext.Provider>
-  );
-}
-
-export function useData() {
-  const context = useContext(DataContext);
-  if (!context) {
-    throw new Error('useData must be used within a DataProvider');
-  }
-  return context;
-}
-
-export default DataContext;
-EOF
-
-# Fix NotificationContext.js
-cat > src/contexts/NotificationContext.js << 'EOF'
-import React, { createContext, useContext, useState } from 'react';
-
-const NotificationContext = createContext();
-
-export function NotificationProvider({ children }) {
-  const [notifications, setNotifications] = useState([]);
-
-  const addNotification = (message, type = 'info', duration = 5000) => {
-    const id = Date.now();
-    const notification = { id, message, type };
-    
-    setNotifications(prev => [...prev, notification]);
-    
-    if (duration > 0) {
-      setTimeout(() => {
-        removeNotification(id);
-      }, duration);
-    }
-    
-    return id;
-  };
-
-  const removeNotification = (id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  const value = {
-    notifications,
-    addNotification,
-    removeNotification
-  };
-
-  return (
-    <NotificationContext.Provider value={value}>
-      {children}
-    </NotificationContext.Provider>
-  );
-}
-
-export function useNotification() {
-  const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error('useNotification must be used within a NotificationProvider');
-  }
-  return context;
-}
-
-export default NotificationContext;
-EOF
-
-echo "✅ All context files fixed with proper exports!"
+echo "✅ Tailwind CSS installed properly!"
 echo ""
-echo "📋 Fixed exports:"
-echo "  • ThemeProvider from ThemeContext"
-echo "  • AuthProvider from AuthContext"  
-echo "  • DataProvider from DataContext"
-echo "  • NotificationProvider from NotificationContext"
-echo ""
-echo "🚀 Now commit and push:"
-echo "  git add src/contexts/"
-echo "  git commit -m 'Fix context exports'"
-echo "  git push origin master"
+echo "📋 Next: Remove CDN script from public/index.html"
