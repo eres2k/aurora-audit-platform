@@ -1,79 +1,99 @@
 #!/bin/bash
 
-echo "🎨 Installing Tailwind CSS properly for production..."
+echo "🚀 Fixing Tailwind CSS Build Issue"
+echo "==================================="
 
-# Step 1: Install Tailwind and its dependencies
-npm install -D tailwindcss postcss autoprefixer
+# Fix 1: Install Tailwind as regular dependency (not devDependency)
+echo "📦 Installing Tailwind CSS as dependency..."
+npm uninstall tailwindcss postcss autoprefixer 2>/dev/null
+npm install tailwindcss@latest postcss@latest autoprefixer@latest --save
 
-# Step 2: Initialize Tailwind
-npx tailwindcss init -p
+# Fix 2: Ensure configuration files exist
+echo "⚙️ Creating/updating configuration files..."
 
-# Step 3: Update tailwind.config.js
-cat > tailwind.config.js << 'EOF'
+# Create minimal tailwind.config.js if missing
+if [ ! -f "tailwind.config.js" ]; then
+  cat > tailwind.config.js << 'EOF'
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
     "./public/index.html"
   ],
-  darkMode: 'class',
   theme: {
-    extend: {
-      colors: {
-        primary: {
-          50: '#EFF6FF',
-          100: '#DBEAFE',
-          200: '#BFDBFE',
-          300: '#93C5FD',
-          400: '#60A5FA',
-          500: '#3B82F6',
-          600: '#2563EB',
-          700: '#1D4ED8',
-          800: '#1E40AF',
-          900: '#1E3A8A'
-        }
-      },
-      animation: {
-        'fade-in': 'fadeIn 0.5s ease-in-out',
-        'slide-up': 'slideUp 0.3s ease-out',
-        'slide-down': 'slideDown 0.3s ease-out',
-        'scale-in': 'scaleIn 0.2s ease-out'
-      }
-    }
+    extend: {},
   },
   plugins: [],
 }
 EOF
+  echo "✅ Created tailwind.config.js"
+fi
 
-# Step 4: Update src/index.css to include Tailwind
-cat > src/index.css << 'EOF'
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
+# Create postcss.config.js if missing
+if [ ! -f "postcss.config.js" ]; then
+  cat > postcss.config.js << 'EOF'
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
 }
 EOF
+  echo "✅ Created postcss.config.js"
+fi
 
-echo "✅ Tailwind CSS installed properly!"
-echo ""
-echo "📋 Next: Remove CDN script from public/index.html"
+# Fix 3: Update package.json to ensure Tailwind is in dependencies
+echo "📝 Updating package.json..."
+node -e "
+const fs = require('fs');
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+
+// Move Tailwind packages from devDependencies to dependencies
+const tailwindPackages = ['tailwindcss', 'postcss', 'autoprefixer'];
+tailwindPackages.forEach(pkgName => {
+  if (pkg.devDependencies && pkg.devDependencies[pkgName]) {
+    pkg.dependencies[pkgName] = pkg.devDependencies[pkgName];
+    delete pkg.devDependencies[pkgName];
+  }
+});
+
+// Ensure they exist in dependencies
+if (!pkg.dependencies.tailwindcss) {
+  pkg.dependencies.tailwindcss = '^3.3.0';
+}
+if (!pkg.dependencies.postcss) {
+  pkg.dependencies.postcss = '^8.4.31';
+}
+if (!pkg.dependencies.autoprefixer) {
+  pkg.dependencies.autoprefixer = '^10.4.16';
+}
+
+fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+console.log('✅ Updated package.json');
+"
+
+# Fix 4: Remove package-lock.json to ensure clean install
+echo "🧹 Cleaning up..."
+rm -f package-lock.json
+
+# Fix 5: Test build locally
+echo "🧪 Testing build..."
+npm install
+npm run build
+
+if [ $? -eq 0 ]; then
+  echo ""
+  echo "✅ Build successful!"
+  echo ""
+  echo "📋 Changes made:"
+  echo "  • Moved Tailwind to dependencies (not devDependencies)"
+  echo "  • Created/updated config files"
+  echo "  • Cleaned package-lock.json"
+  echo ""
+  echo "🚀 Deploy with:"
+  echo "  git add ."
+  echo "  git commit -m 'Fix: Move Tailwind to dependencies for production build'"
+  echo "  git push origin master"
+else
+  echo "❌ Build still failing. See error above."
+fi
