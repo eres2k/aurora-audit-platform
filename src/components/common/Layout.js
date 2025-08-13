@@ -1,328 +1,147 @@
+// ===================================
+// src/components/common/Layout.js
+// ===================================
 import React, { useState } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import {
-  Box,
-  Drawer,
-  AppBar,
-  Toolbar,
-  List,
-  Typography,
-  Divider,
-  IconButton,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  ListItemButton,
-  Container,
-  Avatar,
-  Menu,
-  MenuItem,
-  Chip,
-  useTheme,
-  useMediaQuery,
-  Badge,
-  Tooltip,
-} from '@mui/material';
-import {
-  Menu as MenuIcon,
-  Dashboard,
-  Assignment,
-  QuestionAnswer,
-  Description,
-  Assessment,
-  Settings,
-  Logout,
-  Person,
-  Notifications,
-  Search,
-  DarkMode,
-  LightMode,
-  ChevronLeft,
-} from '@mui/icons-material';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
-const drawerWidth = 280;
-
-const Layout = () => {
+export default function Layout() {
+  const { user, logout, getUserRole } = useAuth();
+  const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
-  const location = useLocation();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const { user, logout } = useAuth();
-  
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
-  const menuItems = [
-    { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard', color: '#1976d2' },
-    { text: 'Audits', icon: <Assignment />, path: '/audits', color: '#9c27b0' },
-    { text: 'Questions', icon: <QuestionAnswer />, path: '/questions', color: '#ed6c02' },
-    { text: 'Templates', icon: <Description />, path: '/templates', color: '#0288d1' },
-    { text: 'Reports', icon: <Assessment />, path: '/reports', color: '#2e7d32' },
-    { text: 'Settings', icon: <Settings />, path: '/settings', color: '#757575' },
+  const navigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: '🏠' },
+    { name: 'Stations', href: '/stations', icon: '🏭' },
+    { name: 'Audits', href: '/audits', icon: '📋' },
+    { name: 'Questions', href: '/questions', icon: '❓' },
+    { name: 'Templates', href: '/templates', icon: '📄' },
+    { name: 'Reports', href: '/reports', icon: '📊' },
+    { name: 'Settings', href: '/settings', icon: '⚙️' },
   ];
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
-  const handleProfileMenu = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleProfileClose = () => {
-    setAnchorEl(null);
-  };
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const drawer = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Toolbar sx={{ px: 2, py: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontWeight: 'bold',
-            }}
-          >
-            A
-          </Box>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
-              Aurora Audit
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Professional Platform
-            </Typography>
-          </Box>
-          {isMobile && (
-            <IconButton onClick={handleDrawerToggle} size="small">
-              <ChevronLeft />
-            </IconButton>
-          )}
-        </Box>
-      </Toolbar>
-      
-      <Divider />
-      
-      <List sx={{ px: 2, py: 2, flexGrow: 1 }}>
-        {menuItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton
-                onClick={() => {
-                  navigate(item.path);
-                  if (isMobile) setMobileOpen(false);
-                }}
-                sx={{
-                  borderRadius: 2,
-                  backgroundColor: isActive ? 'action.selected' : 'transparent',
-                  '&:hover': {
-                    backgroundColor: isActive ? 'action.selected' : 'action.hover',
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ color: isActive ? item.color : 'text.secondary', minWidth: 40 }}>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={item.text}
-                  primaryTypographyProps={{
-                    fontWeight: isActive ? 600 : 400,
-                    color: isActive ? 'text.primary' : 'text.secondary',
-                  }}
-                />
-                {item.text === 'Audits' && (
-                  <Chip label="3" size="small" color="primary" sx={{ height: 20 }} />
-                )}
-              </ListItemButton>
-            </ListItem>
-          );
-        })}
-      </List>
-      
-      <Divider />
-      
-      <Box sx={{ p: 2 }}>
-        <Box
-          sx={{
-            p: 2,
-            borderRadius: 2,
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            textAlign: 'center',
-          }}
-        >
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-            Pro Version
-          </Typography>
-          <Typography variant="caption" sx={{ opacity: 0.9 }}>
-            Unlock all features
-          </Typography>
-        </Box>
-      </Box>
-    </Box>
-  );
-
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-      <AppBar
-        position="fixed"
-        elevation={0}
-        sx={{
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
-          bgcolor: 'background.paper',
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-        }}
-      >
-        <Toolbar sx={{ px: { xs: 2, sm: 3 } }}>
-          <IconButton
-            color="inherit"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { md: 'none' }, color: 'text.primary' }}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 transform transition-transform duration-300 ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } lg:translate-x-0`}>
+        <div className="flex items-center justify-between h-16 px-6 bg-gradient-to-r from-blue-600 to-purple-600">
+          <div className="flex items-center">
+            <span className="text-2xl mr-3">🌟</span>
+            <span className="text-xl font-bold text-white">Aurora</span>
+          </div>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden text-white hover:text-gray-200"
           >
-            <MenuIcon />
-          </IconButton>
-          
-          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="h6" noWrap component="div" color="text.primary" sx={{ fontWeight: 600 }}>
-              {menuItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
-            </Typography>
-          </Box>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <nav className="mt-8 px-4">
+          {navigation.map((item) => (
+            <NavLink
+              key={item.name}
+              to={item.href}
+              className={({ isActive }) =>
+                `flex items-center px-4 py-3 mb-2 rounded-lg transition-colors ${
+                  isActive
+                    ? 'bg-blue-50 dark:bg-gray-700 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`
+              }
+            >
+              <span className="text-xl mr-3">{item.icon}</span>
+              <span className="font-medium">{item.name}</span>
+            </NavLink>
+          ))}
+        </nav>
+        
+        <div className="absolute bottom-0 w-full p-4 border-t dark:border-gray-700">
+          <div className="flex items-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
+              {user?.email?.[0]?.toUpperCase() || 'U'}
+            </div>
+            <div className="ml-3 flex-1">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                {user?.user_metadata?.full_name || user?.email || 'User'}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {getUserRole()}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Tooltip title="Search">
-              <IconButton sx={{ color: 'text.secondary' }}>
-                <Search />
-              </IconButton>
-            </Tooltip>
+      {/* Main Content */}
+      <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : ''}`}>
+        {/* Header */}
+        <header className="bg-white dark:bg-gray-800 shadow-sm">
+          <div className="flex items-center justify-between px-6 py-4">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
             
-            <Tooltip title="Toggle theme">
-              <IconButton onClick={() => setDarkMode(!darkMode)} sx={{ color: 'text.secondary' }}>
-                {darkMode ? <LightMode /> : <DarkMode />}
-              </IconButton>
-            </Tooltip>
-            
-            <Tooltip title="Notifications">
-              <IconButton sx={{ color: 'text.secondary' }}>
-                <Badge badgeContent={4} color="error">
-                  <Notifications />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-            
-            <Tooltip title="Profile">
-              <IconButton onClick={handleProfileMenu} sx={{ ml: 1 }}>
-                <Avatar sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}>
-                  {user?.email?.[0]?.toUpperCase() || 'U'}
-                </Avatar>
-              </IconButton>
-            </Tooltip>
-          </Box>
-          
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={handleProfileClose}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-            PaperProps={{
-              sx: { mt: 1.5, minWidth: 200 }
-            }}
-          >
-            <Box sx={{ px: 2, py: 1.5 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                {user?.email || 'User'}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Administrator
-              </Typography>
-            </Box>
-            <Divider />
-            <MenuItem onClick={() => { handleProfileClose(); navigate('/settings'); }}>
-              <ListItemIcon><Person fontSize="small" /></ListItemIcon>
-              Profile
-            </MenuItem>
-            <MenuItem onClick={() => { handleProfileClose(); navigate('/settings'); }}>
-              <ListItemIcon><Settings fontSize="small" /></ListItemIcon>
-              Settings
-            </MenuItem>
-            <Divider />
-            <MenuItem onClick={handleLogout}>
-              <ListItemIcon><Logout fontSize="small" /></ListItemIcon>
-              Logout
-            </MenuItem>
-          </Menu>
-        </Toolbar>
-      </AppBar>
-      
-      <Box
-        component="nav"
-        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
-      >
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-              borderRight: 'none',
-            },
-          }}
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', md: 'block' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-              borderRight: 'none',
-              bgcolor: 'background.paper',
-            },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
-      
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-        }}
-      >
-        <Toolbar />
-        <Container maxWidth="xl" sx={{ py: 3 }}>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={toggleDarkMode}
+                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                {darkMode ? '☀️' : '🌙'}
+              </button>
+              
+              <button className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                <span className="text-xl">🔔</span>
+                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+              </button>
+              
+              <div className="relative">
+                <button
+                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                  className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
+                    {user?.email?.[0]?.toUpperCase() || 'U'}
+                  </div>
+                </button>
+                
+                {profileMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-50">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="p-6">
           <Outlet />
-        </Container>
-      </Box>
-    </Box>
+        </main>
+      </div>
+    </div>
   );
-};
-
-export default Layout;
+}
