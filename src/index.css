@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom styles */
 * {
   margin: 0;
   padding: 0;
@@ -20,4 +21,27 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* Utility classes for when Tailwind is loading */
+.min-h-screen {
+  min-height: 100vh;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Dark mode base styles */
+.dark {
+  color-scheme: dark;
 }
