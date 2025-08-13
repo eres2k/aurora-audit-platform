@@ -1,6 +1,4 @@
-// ===================================
 // src/components/common/Layout.js
-// ===================================
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
