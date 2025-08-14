@@ -4,6 +4,7 @@
 # This script fixes the PostCSS/Tailwind configuration and dependency issues
 
 echo "🔧 Aurora Audit Platform - Build Fix Script"
+echo "==========================================="
 
 # Step 1: Clean existing node_modules and lock files
 echo "📦 Step 1: Cleaning existing dependencies..."
