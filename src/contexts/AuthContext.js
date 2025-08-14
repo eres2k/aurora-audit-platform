@@ -2,7 +2,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import netlifyIdentity from 'netlify-identity-widget';
 
-const AuthContext = createContext({});
+// Create context without a default value so missing providers are detected
+const AuthContext = createContext(undefined);
 
 // Configure Netlify Identity
 netlifyIdentity.init({
