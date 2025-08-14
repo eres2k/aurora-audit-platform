@@ -1,15 +1,20 @@
 [build]
-  command = "CI=false npm run build"
   publish = "build"
+  command = "npm run build"
+
+[build.environment]
+  CI = "false"
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-XSS-Protection = "1; mode=block"
-    X-Content-Type-Options = "nosniff"
+[context.production.environment]
+  REACT_APP_ENV = "production"
+
+[context.deploy-preview.environment]
+  REACT_APP_ENV = "preview"
+
+[context.branch-deploy.environment]
+  REACT_APP_ENV = "development"
