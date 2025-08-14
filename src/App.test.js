@@ -1,8 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+// Mock auth context to avoid requiring AuthProvider in tests
+jest.mock('./contexts/AuthContext', () => ({
+  useAuth: () => ({ user: null, loading: true })
+}));
+
+test('renders loading state', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  expect(screen.getByText(/Loading Aurora Audit Platform/i)).toBeInTheDocument();
 });
