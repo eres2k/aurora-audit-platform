@@ -15,6 +15,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "postinstall": "patch-package",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
@@ -39,7 +40,9 @@
     ]
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
     "autoprefixer": "^10.4.21",
+    "patch-package": "^8.0.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.11"
   }
