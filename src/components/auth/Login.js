@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Login() {
-  const { user, login, signup } = useAuth();
+  const { user, login, signup, demoLogin } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -14,17 +14,8 @@ export default function Login() {
   }, [user, navigate]);
 
   const handleDemoLogin = () => {
-    if (window.netlifyIdentity) {
-      login();
-    } else {
-      const demoUser = {
-        email: 'demo@aurora.com',
-        user_metadata: { full_name: 'Demo User' },
-        id: 'demo-user-001'
-      };
-      localStorage.setItem('aurora_user', JSON.stringify(demoUser));
-      window.location.href = '/dashboard';
-    }
+    demoLogin();
+    navigate('/dashboard');
   };
 
   return (

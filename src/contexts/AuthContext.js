@@ -15,12 +15,16 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Check for existing user on mount
-    const currentUser = netlifyIdentity.currentUser();
+    // Check for existing user on mount. Prefer a stored demo user if one exists.
+    const storedUser = localStorage.getItem('aurora_user');
+    const currentUser = storedUser
+      ? JSON.parse(storedUser)
+      : netlifyIdentity.currentUser();
+
     setUser(currentUser);
     setLoading(false);
 
-    // Set up event listeners
+    // Set up Netlify Identity event listeners
     netlifyIdentity.on('login', (user) => {
       setUser(user);
       setError(null);
@@ -61,8 +65,22 @@ export function AuthProvider({ children }) {
     netlifyIdentity.open('signup');
   };
 
+  const demoLogin = () => {
+    const demoUser = {
+      email: 'demo@aurora.com',
+      user_metadata: { full_name: 'Demo User' },
+      id: 'demo-user-001'
+    };
+    localStorage.setItem('aurora_user', JSON.stringify(demoUser));
+    setUser(demoUser);
+  };
+
   const logout = () => {
-    netlifyIdentity.logout();
+    localStorage.removeItem('aurora_user');
+    if (netlifyIdentity.currentUser()) {
+      netlifyIdentity.logout();
+    }
+    setUser(null);
   };
 
   const updateUser = async (updates) => {
@@ -102,6 +120,7 @@ export function AuthProvider({ children }) {
     login,
     signup,
     logout,
+    demoLogin,
     updateUser,
     recoverPassword,
     getUserRole,
