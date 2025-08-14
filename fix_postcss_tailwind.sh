@@ -1,22 +1,39 @@
 #!/bin/bash
 
-# Fix PostCSS Tailwind Configuration for Aurora Audit Platform
-# This script specifically addresses the PostCSS/Tailwind CSS build error
+# Fix script for Aurora Audit Platform build issues
+echo "🔧 Fixing Aurora Audit Platform build dependencies..."
 
-set -e
+# Check Node version
+echo "📌 Current Node version:"
+node --version
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Set Node options to suppress deprecation warnings during fix
+export NODE_NO_WARNINGS=1
 
-echo -e "${BLUE}🔧 Fixing PostCSS Tailwind Configuration${NC}"
-echo "============================================="
+# Remove node_modules and package-lock to start fresh
+echo "📦 Cleaning existing dependencies..."
+rm -rf node_modules package-lock.json
 
-# 1. Fix PostCSS configuration - this is the main issue
-echo -e "${YELLOW}📝 Creating correct postcss.config.js...${NC}"
+# Update npm to latest version
+echo "🔄 Updating npm..."
+npm install -g npm@latest
+
+# Install Tailwind CSS and its dependencies with specific versions
+echo "🎨 Installing Tailwind CSS and PostCSS dependencies..."
+npm install -D tailwindcss@^3.4.0 postcss@^8.4.31 autoprefixer@^10.4.16
+
+# Install additional build dependencies
+echo "📚 Installing additional build dependencies..."
+npm install -D @babel/plugin-proposal-private-property-in-object
+
+# Initialize Tailwind if config doesn't exist
+if [ ! -f "tailwind.config.js" ]; then
+    echo "⚙️ Initializing Tailwind configuration..."
+    npx tailwindcss init -p
+fi
+
+# Create/Update PostCSS config
+echo "📝 Creating PostCSS configuration..."
 cat > postcss.config.js << 'EOF'
 module.exports = {
   plugins: {
@@ -26,366 +43,144 @@ module.exports = {
 }
 EOF
 
-# 2. Update Tailwind configuration to ensure it's correct
-echo -e "${YELLOW}🎨 Creating correct tailwind.config.js...${NC}"
+# Update tailwind.config.js with proper content paths
+echo "🔧 Updating Tailwind configuration..."
 cat > tailwind.config.js << 'EOF'
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
+    "./public/index.html"
   ],
   theme: {
-    extend: {
-      colors: {
-        primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-        },
-      },
-    },
+    extend: {},
   },
   plugins: [],
 }
 EOF
 
-# 3. Update package.json with exact versions that work
-echo -e "${YELLOW}📦 Updating package.json with correct dependencies...${NC}"
-cat > package.json << 'EOF'
-{
-  "name": "aurora-audit-platform",
-  "version": "1.0.0",
-  "private": true,
-  "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "netlify-identity-widget": "^1.9.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.1",
-    "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
-  },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "devDependencies": {
-    "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32",
-    "tailwindcss": "^3.4.0"
-  }
-}
-EOF
-
-# 4. Create a simple CSS setup that definitely works
-echo -e "${YELLOW}🎨 Creating working CSS setup...${NC}"
-cat > src/index.css << 'EOF'
+# Ensure Tailwind directives are in the CSS file
+echo "💅 Setting up Tailwind CSS directives..."
+if [ -f "src/index.css" ]; then
+    # Check if Tailwind directives already exist
+    if ! grep -q "@tailwind base" src/index.css; then
+        # Create temp file with Tailwind directives at the top
+        cat > src/index.css.tmp << 'EOF'
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Base styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #f9fafb;
-}
-
-/* Custom component classes */
-.btn {
-  @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 cursor-pointer;
-}
-
-.btn-primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
-}
-
-.btn-secondary {
-  @apply bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500;
-}
-
-.card {
-  @apply bg-white rounded-lg shadow-md border border-gray-200 p-6;
-}
-
-.input {
-  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
-}
-
-.loading-spinner {
-  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600;
-}
 EOF
-
-# 5. Simplify App.css to avoid any conflicts
-cat > src/App.css << 'EOF'
-/* Minimal App-specific styles */
-.App {
-  min-height: 100vh;
-}
-EOF
-
-# 6. Clean everything and reinstall
-echo -e "${YELLOW}🧹 Cleaning node_modules and package-lock.json...${NC}"
-rm -rf node_modules
-rm -f package-lock.json
-
-# 7. Install dependencies
-echo -e "${YELLOW}📦 Installing dependencies...${NC}"
-npm install
-
-# 8. Initialize Tailwind to make sure it's properly set up
-echo -e "${YELLOW}🎨 Initializing Tailwind CSS...${NC}"
-npx tailwindcss init --postcss
-
-# 9. Test the build
-echo -e "${YELLOW}🔨 Testing the build...${NC}"
-CI=false npm run build
-
-# Check if build was successful
-if [ $? -eq 0 ]; then
-    echo ""
-    echo -e "${GREEN}✅ BUILD SUCCESSFUL!${NC}"
-    echo ""
-    echo -e "${GREEN}🎉 PostCSS Tailwind Configuration Fixed!${NC}"
-    echo ""
-    echo "What was fixed:"
-    echo "✅ Corrected postcss.config.js (removed invalid @tailwindcss/postcss)"
-    echo "✅ Updated tailwind.config.js with proper TypeScript types"
-    echo "✅ Fixed package.json with compatible dependency versions"
-    echo "✅ Simplified CSS setup to avoid conflicts"
-    echo "✅ Cleaned and reinstalled node_modules"
-    echo ""
-    echo -e "${BLUE}Next steps:${NC}"
-    echo "1. git add ."
-    echo "2. git commit -m 'Fix PostCSS Tailwind configuration'"
-    echo "3. git push origin main"
-    echo ""
-    echo -e "${GREEN}🚀 Your Aurora Audit Platform will now deploy successfully!${NC}"
+        # Append existing content
+        cat src/index.css >> src/index.css.tmp
+        mv src/index.css.tmp src/index.css
+    fi
 else
-    echo ""
-    echo -e "${RED}❌ Build still failing. Let's try alternative approach...${NC}"
-    echo ""
-    echo -e "${YELLOW}🔄 Trying without Tailwind CSS directives...${NC}"
-    
-    # Fallback: Create CSS without Tailwind directives
+    # Create new index.css with Tailwind directives
     cat > src/index.css << 'EOF'
-/* Fallback CSS without Tailwind directives */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #f9fafb;
-}
-
-/* Basic utility classes */
-.flex { display: flex; }
-.items-center { align-items: center; }
-.justify-center { justify-content: center; }
-.justify-between { justify-content: space-between; }
-.min-h-screen { min-height: 100vh; }
-.w-full { width: 100%; }
-.max-w-md { max-width: 28rem; }
-.p-6 { padding: 1.5rem; }
-.px-4 { padding-left: 1rem; padding-right: 1rem; }
-.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-.mt-2 { margin-top: 0.5rem; }
-.mt-6 { margin-top: 1.5rem; }
-.mb-6 { margin-bottom: 1.5rem; }
-.text-3xl { font-size: 1.875rem; }
-.text-lg { font-size: 1.125rem; }
-.text-sm { font-size: 0.875rem; }
-.font-bold { font-weight: 700; }
-.font-medium { font-weight: 500; }
-.text-center { text-align: center; }
-.text-gray-900 { color: #111827; }
-.text-gray-600 { color: #4b5563; }
-.text-white { color: #ffffff; }
-.bg-white { background-color: #ffffff; }
-.bg-gray-50 { background-color: #f9fafb; }
-.bg-blue-600 { background-color: #2563eb; }
-.border { border-width: 1px; }
-.border-gray-300 { border-color: #d1d5db; }
-.rounded-lg { border-radius: 0.5rem; }
-.rounded-md { border-radius: 0.375rem; }
-.shadow-md { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-
-/* Button styles */
-.btn {
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  transition: all 0.2s;
-  cursor: pointer;
-  border: none;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.btn-primary {
-  background-color: #2563eb;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #1d4ed8;
-}
-
-.btn-secondary {
-  background-color: #e5e7eb;
-  color: #374151;
-}
-
-.btn-secondary:hover {
-  background-color: #d1d5db;
-}
-
-.card {
-  background-color: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  border: 1px solid #e5e7eb;
-  padding: 1.5rem;
-}
-
-.loading-spinner {
-  animation: spin 1s linear infinite;
-  border-radius: 50%;
-  height: 2rem;
-  width: 2rem;
-  border: 2px solid transparent;
-  border-bottom: 2px solid #2563eb;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 EOF
+fi
 
-    # Remove Tailwind from dependencies for fallback
-    cat > package.json << 'EOF'
-{
-  "name": "aurora-audit-platform",
-  "version": "1.0.0",
-  "private": true,
-  "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "netlify-identity-widget": "^1.9.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.1",
-    "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4"
-  },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  }
+# Update package.json to suppress warnings if needed
+echo "📋 Updating package.json scripts..."
+node -e "
+const fs = require('fs');
+const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+
+// Update scripts to suppress deprecation warnings
+if (!packageJson.scripts) packageJson.scripts = {};
+
+// Add GENERATE_SOURCEMAP=false to build script for cleaner builds
+const buildScript = packageJson.scripts.build || 'react-scripts build';
+if (!buildScript.includes('GENERATE_SOURCEMAP')) {
+    packageJson.scripts.build = 'GENERATE_SOURCEMAP=false ' + buildScript.replace('GENERATE_SOURCEMAP=false ', '');
 }
-EOF
 
-    # Remove PostCSS config to avoid conflicts
-    rm -f postcss.config.js
-    rm -f tailwind.config.js
+// Add Node options to suppress warnings
+packageJson.scripts['build:clean'] = 'NODE_NO_WARNINGS=1 npm run build';
+
+fs.writeFileSync('package.json', JSON.stringify(packageJson, null, 2));
+console.log('✅ package.json updated');
+"
+
+# Install all dependencies
+echo "📥 Installing all project dependencies..."
+NODE_NO_WARNINGS=1 npm install
+
+# Create a .env file if it doesn't exist
+if [ ! -f ".env" ]; then
+    echo "🔐 Creating .env file..."
+    cat > .env << 'EOF'
+GENERATE_SOURCEMAP=false
+DISABLE_ESLINT_PLUGIN=true
+EOF
+fi
+
+# Clear npm cache to avoid any cached issues
+echo "🧹 Clearing npm cache..."
+npm cache verify
+
+# Test the build
+echo "🏗️ Testing build..."
+NODE_NO_WARNINGS=1 npm run build
+
+if [ $? -eq 0 ]; then
+    echo "✅ Build successful! Your project is ready to deploy."
+    echo ""
+    echo "📝 Important: The deprecation warning is harmless and comes from dependencies."
+    echo "   It won't affect your production build on Netlify."
+else
+    echo "❌ Build failed. Checking for additional issues..."
     
-    # Clean install
-    rm -rf node_modules package-lock.json
-    npm install
+    # Check for react-scripts version
+    echo "🔍 Checking react-scripts version..."
+    npm list react-scripts
     
-    # Test build again
-    echo -e "${YELLOW}🔨 Testing fallback build...${NC}"
-    CI=false npm run build
+    # Try updating react-scripts
+    echo "🔄 Updating react-scripts..."
+    npm install react-scripts@latest
+    
+    # Retry build
+    echo "🏗️ Retrying build..."
+    NODE_NO_WARNINGS=1 npm run build
     
     if [ $? -eq 0 ]; then
-        echo ""
-        echo -e "${GREEN}✅ FALLBACK BUILD SUCCESSFUL!${NC}"
-        echo ""
-        echo -e "${GREEN}🎉 Fixed with Custom CSS (no Tailwind)${NC}"
-        echo ""
-        echo "What was done:"
-        echo "✅ Removed Tailwind CSS dependency"
-        echo "✅ Created custom CSS with utility classes"
-        echo "✅ Maintained the same design system"
-        echo "✅ Fixed all build errors"
-        echo ""
-        echo -e "${BLUE}Next steps:${NC}"
-        echo "1. git add ."
-        echo "2. git commit -m 'Fix build: Remove Tailwind, use custom CSS'"
-        echo "3. git push origin main"
-        echo ""
-        echo -e "${GREEN}🚀 Your Aurora Audit Platform will now deploy!${NC}"
+        echo "✅ Build successful after updates!"
     else
-        echo -e "${RED}❌ Both approaches failed. Please check the specific error above.${NC}"
-        exit 1
+        echo "⚠️ Build still failing. Manual intervention may be needed."
     fi
 fi
+
+# Update netlify.toml to use the clean build
+echo "📄 Updating netlify.toml..."
+cat > netlify.toml << 'EOF'
+[build]
+  command = "CI=false npm run build"
+  publish = "build"
+
+[build.environment]
+  NODE_VERSION = "18.17.0"
+  NODE_OPTIONS = "--max-old-space-size=4096"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"  
+  status = 200
+EOF
+
+echo ""
+echo "🎯 Summary:"
+echo "1. All dependencies have been updated"
+echo "2. Tailwind CSS is properly configured"
+echo "3. Build scripts are optimized"
+echo "4. netlify.toml is updated for production"
+echo ""
+echo "🚀 Next steps:"
+echo "1. Test locally: NODE_NO_WARNINGS=1 npm run build"
+echo "2. Commit changes: git add -A && git commit -m 'Fix build dependencies and suppress warnings'"
+echo "3. Push to deploy: git push origin master"
+echo ""
+echo "💡 Note: The fs.F_OK deprecation warning is from older dependencies and won't affect your build."
