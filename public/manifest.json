@@ -1,5 +1,5 @@
 {
-  "short_name": "Aurora Audit",
+  "short_name": "Aurora",
   "name": "Aurora Audit Platform",
   "icons": [
     {
@@ -10,6 +10,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#1976d2",
+  "theme_color": "#000000",
   "background_color": "#ffffff"
 }
