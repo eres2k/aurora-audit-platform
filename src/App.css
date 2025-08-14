@@ -1,8 +1,4 @@
-/* Additional app-specific styles */
+/* Minimal App-specific styles */
 .App {
   min-height: 100vh;
-}
-
-.loading-spinner {
-  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600;
 }
