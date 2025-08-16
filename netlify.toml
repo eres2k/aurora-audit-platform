@@ -1,14 +1,12 @@
 [build]
-  command = "npm install --production=false && npm run build"
   publish = "build"
-
-[build.environment]
-  NODE_VERSION = "18.17.0"
-  NPM_VERSION = "9.6.7"
-  NODE_OPTIONS = "--max_old_space_size=4096"
-  CI = "false"
+  functions = "netlify/functions"
 
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
+
+[dev]
+  command = "npm start"
+  port = 3000

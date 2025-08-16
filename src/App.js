@@ -1,18 +1,36 @@
-import React from 'react';
-import './App.css';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { Container, CssBaseline } from '@mui/material';
+import { getUser } from './services/auth';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import AuditDetail from './pages/AuditDetail';
+import Profile from './pages/Profile';
 
 function App() {
+  const user = getUser();
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator && process.env.REACT_APP_ENABLE_OFFLINE === 'true') {
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.sync.register('sync-audits');
+      });
+    }
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container mx-auto px-4 py-16">
-        <h1 className="text-4xl font-bold text-center text-gray-800 mb-4">
-          Aurora Audit Platform
-        </h1>
-        <p className="text-center text-gray-600">
-          Professional Auditing System - Build Successful!
-        </p>
-      </div>
-    </div>
+    <>
+      <CssBaseline />
+      <Container maxWidth="lg">
+        <Routes>
+          <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
+          <Route path="/audit/:id" element={user ? <AuditDetail /> : <Navigate to="/login" />} />
+          <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
+          <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
+        </Routes>
+      </Container>
+    </>
   );
 }
 
