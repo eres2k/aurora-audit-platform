@@ -1,18 +1,47 @@
 import React from 'react';
-import './App.css';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './pages/LoginPage';
+import StationSelect from './pages/StationSelect';
+import AuditPage from './pages/AuditPage';
+import DashboardPage from './pages/DashboardPage';
+import { useAuth } from './contexts/AuthContext';
+
+const PrivateRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <div className="p-4">Loading...</div>;
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
 
 function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container mx-auto px-4 py-16">
-        <h1 className="text-4xl font-bold text-center text-gray-800 mb-4">
-          Aurora Audit Platform
-        </h1>
-        <p className="text-center text-gray-600">
-          Professional Auditing System - Build Successful!
-        </p>
-      </div>
-    </div>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/station"
+        element={
+          <PrivateRoute>
+            <StationSelect />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/audit/:id?"
+        element={
+          <PrivateRoute>
+            <AuditPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <PrivateRoute>
+            <DashboardPage />
+          </PrivateRoute>
+        }
+      />
+      <Route path="/" element={<Navigate to="/station" replace />} />
+    </Routes>
   );
 }
 

@@ -1,8 +1,13 @@
 import { render, screen } from '@testing-library/react';
-import App from './App';
+import LoginPage from './pages/LoginPage';
+import { AuthProvider } from './contexts/AuthContext';
 
-test('renders app title', () => {
-  render(<App />);
+test('renders login heading', () => {
+  render(
+    <AuthProvider>
+      <LoginPage />
+    </AuthProvider>
+  );
   const headingElement = screen.getByText(/Aurora Audit Platform/i);
   expect(headingElement).toBeInTheDocument();
 });

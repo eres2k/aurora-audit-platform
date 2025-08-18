@@ -7,7 +7,14 @@
     "react-dom": "18.2.0",
     "react-scripts": "5.0.1",
     "web-vitals": "2.1.4",
-    "react-router-dom": "6.21.1"
+    "react-router-dom": "6.21.1",
+    "netlify-identity-widget": "1.9.2",
+    "chart.js": "4.4.1",
+    "react-chartjs-2": "5.2.0",
+    "jspdf": "2.5.1",
+    "jspdf-autotable": "3.5.29",
+    "uuid": "9.0.0",
+    "@netlify/blobs": "10.0.8"
   },
   "devDependencies": {
     "tailwindcss": "3.3.0",
