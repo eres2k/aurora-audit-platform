@@ -1,63 +1,43 @@
-import api from '../api/client';
+import netlifyIdentity from 'netlify-identity-widget';
+
+const API = '/.netlify/functions/audits';
+
+const authHeaders = () => {
+  const user = netlifyIdentity.currentUser();
+  return user ? { Authorization: `Bearer ${user.token.access_token}` } : {};
+};
 
 export const auditService = {
-  getAll: async () => {
-    try {
-      return await api.get('/audits');
-    } catch (error) {
-      console.error('Error fetching audits:', error);
-      return [];
-    }
+  async getAll() {
+    const res = await fetch(API, { headers: authHeaders() });
+    return res.json();
   },
-
-  getById: async (id) => {
-    try {
-      return await api.get(`/audits/${id}`);
-    } catch (error) {
-      console.error('Error fetching audit:', error);
-      return null;
-    }
+  async get(id) {
+    const res = await fetch(`${API}?id=${id}`, { headers: authHeaders() });
+    return res.json();
   },
-
-  create: async (data) => {
-    try {
-      return await api.post('/audits', data);
-    } catch (error) {
-      console.error('Error creating audit:', error);
-      throw error;
-    }
+  async create(data) {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(data),
+    });
+    return res.json();
   },
-
-  update: async (id, data) => {
-    try {
-      return await api.put(`/audits/${id}`, data);
-    } catch (error) {
-      console.error('Error updating audit:', error);
-      throw error;
-    }
+  async update(id, data) {
+    const res = await fetch(API, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ ...data, id }),
+    });
+    return res.json();
   },
-
-  delete: async (id) => {
-    try {
-      await api.delete(`/audits/${id}`);
-      return true;
-    } catch (error) {
-      console.error('Error deleting audit:', error);
-      return false;
-    }
-  },
-
-  getStats: async () => {
-    try {
-      return await api.get('/audits/stats');
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-      return {
-        totalAudits: 0,
-        inProgress: 0,
-        completed: 0,
-        templates: 0,
-      };
-    }
+  async remove(id) {
+    const res = await fetch(API, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ id }),
+    });
+    return res.json();
   },
 };
