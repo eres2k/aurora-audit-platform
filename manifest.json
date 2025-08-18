@@ -1,0 +1,9 @@
+{
+  "name": "Amazon Austria Safety Audit",
+  "short_name": "AuditAT",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1D4ED8",
+  "theme_color": "#1D4ED8",
+  "icons": []
+}
