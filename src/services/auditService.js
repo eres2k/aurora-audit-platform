@@ -1,63 +1,36 @@
-import api from '../api/client';
+const API = '/.netlify/functions/audits';
 
 export const auditService = {
-  getAll: async () => {
-    try {
-      return await api.get('/audits');
-    } catch (error) {
-      console.error('Error fetching audits:', error);
-      return [];
-    }
+  async getAll() {
+    const res = await fetch(API);
+    return res.json();
   },
-
-  getById: async (id) => {
-    try {
-      return await api.get(`/audits/${id}`);
-    } catch (error) {
-      console.error('Error fetching audit:', error);
-      return null;
-    }
+  async get(id) {
+    const res = await fetch(`${API}?id=${id}`);
+    return res.json();
   },
-
-  create: async (data) => {
-    try {
-      return await api.post('/audits', data);
-    } catch (error) {
-      console.error('Error creating audit:', error);
-      throw error;
-    }
+  async create(data) {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
   },
-
-  update: async (id, data) => {
-    try {
-      return await api.put(`/audits/${id}`, data);
-    } catch (error) {
-      console.error('Error updating audit:', error);
-      throw error;
-    }
+  async update(id, data) {
+    const res = await fetch(API, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, id }),
+    });
+    return res.json();
   },
-
-  delete: async (id) => {
-    try {
-      await api.delete(`/audits/${id}`);
-      return true;
-    } catch (error) {
-      console.error('Error deleting audit:', error);
-      return false;
-    }
-  },
-
-  getStats: async () => {
-    try {
-      return await api.get('/audits/stats');
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-      return {
-        totalAudits: 0,
-        inProgress: 0,
-        completed: 0,
-        templates: 0,
-      };
-    }
+  async remove(id) {
+    const res = await fetch(API, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    return res.json();
   },
 };
