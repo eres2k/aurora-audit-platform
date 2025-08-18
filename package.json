@@ -1,0 +1,14 @@
+{
+  "name": "amazon-austria-safety-audit",
+  "version": "1.0.0",
+  "description": "Static safety audit app for Amazon Austria logistics stations",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo 'No tests'",
+    "build": "echo 'No build step'"
+  },
+  "keywords": ["safety", "audit", "amazon", "austria"],
+  "author": "",
+  "license": "MIT",
+  "type": "module"
+}

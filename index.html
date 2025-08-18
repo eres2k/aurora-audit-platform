@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amazon Austria Safety Audit</title>
+  <meta name="description" content="Safety audit tool for Amazon Austria logistics stations" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-pIw1CfpIuIYVE9KpIEsApjCYUJeayQMZT6X0hgqP/d9vywgqbiZ9erjRzCQXDpUe1koXSPo6e7/jT730hTNhDQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <link rel="manifest" href="manifest.json" />
+</head>
+<body class="bg-gray-50 text-gray-800" x-data="app()" x-init="init()">
+  <nav class="bg-blue-800 text-white p-4 flex justify-between">
+    <h1 class="font-bold">Amazon Safety Audit</h1>
+    <div>
+      <button @click="toggleLang()" class="mr-4"><i class="fas fa-language"></i> <span x-text="lang.toUpperCase()"></span></button>
+      <button @click="logout()" class="text-orange-400"><i class="fas fa-sign-out-alt"></i></button>
+    </div>
+  </nav>
+
+  <!-- Login -->
+  <section id="login" x-show="!user" class="p-4">
+    <h2 class="text-xl mb-4" x-text="t('loginTitle')"></h2>
+    <form @submit.prevent="login()">
+      <input type="text" x-model="loginName" placeholder="Name" class="border p-2 w-full mb-2" required />
+      <label class="inline-flex items-center"><input type="checkbox" x-model="consent" required/><span class="ml-2 text-sm" x-html="t('consent')"></span></label>
+      <button type="submit" class="bg-orange-500 text-white w-full p-2 mt-4 rounded">Login</button>
+    </form>
+  </section>
+
+  <!-- App -->
+  <div id="app" x-show="user" class="p-4 space-y-8">
+    <!-- Station selection -->
+    <section>
+      <label class="block mb-2 font-semibold" x-text="t('station')"></label>
+      <select x-model="currentStation" class="border p-2 w-full">
+        <template x-for="s in stations" :key="s.id">
+          <option :value="s.id" x-text="s.name"></option>
+        </template>
+      </select>
+    </section>
+
+    <!-- Checklist -->
+    <section>
+      <h2 class="text-xl mb-2" x-text="t('newAudit')"></h2>
+      <div class="space-y-4">
+        <template x-for="(item,index) in checklist" :key="index">
+          <div class="border p-2 rounded">
+            <p class="font-semibold" x-text="t(item.q)"></p>
+            <div class="mt-2 flex space-x-4">
+              <label><input type="radio" :name="'chk'+index" value="pass" x-model="item.res"/> <span x-text="t('pass')"></span></label>
+              <label><input type="radio" :name="'chk'+index" value="fail" x-model="item.res"/> <span x-text="t('fail')"></span></label>
+              <label><input type="radio" :name="'chk'+index" value="na" x-model="item.res"/> N/A</label>
+            </div>
+            <textarea x-model="item.note" class="w-full border mt-2 p-1" :placeholder="t('notes')"></textarea>
+          </div>
+        </template>
+        <button @click="saveAudit()" class="bg-blue-700 text-white p-2 rounded" x-text="t('saveAudit')"></button>
+      </div>
+    </section>
+
+    <!-- Issues -->
+    <section>
+      <h2 class="text-xl mb-2" x-text="t('openIssues')"></h2>
+      <template x-if="issues.length === 0">
+        <p x-text="t('noIssues')"></p>
+      </template>
+      <template x-for="(issue,i) in issues" :key="i">
+        <div class="border p-2 mb-2">
+          <p class="font-semibold" x-text="issue.question"></p>
+          <p class="text-sm" x-text="issue.note"></p>
+          <label class="text-sm block mt-1" x-text="t('assignedTo')"></label>
+          <input type="text" x-model="issue.assignee" class="border p-1 w-full mb-1" />
+          <button @click="resolveIssue(i)" class="bg-green-600 text-white px-2 py-1 rounded text-sm" x-text="t('resolve')"></button>
+        </div>
+      </template>
+    </section>
+
+    <!-- Dashboard -->
+    <section>
+      <h2 class="text-xl mb-2" x-text="t('dashboard')"></h2>
+      <canvas id="summaryChart" width="400" height="200"></canvas>
+    </section>
+
+    <!-- Assets -->
+    <section>
+      <h2 class="text-xl mb-2" x-text="t('assets')"></h2>
+      <div class="mb-2">
+        <input type="text" x-model="newAsset.name" :placeholder="t('assetName')" class="border p-1" />
+        <button @click="addAsset()" class="bg-blue-700 text-white px-2 py-1 rounded text-sm" x-text="t('add')"></button>
+      </div>
+      <ul>
+        <template x-for="(a,idx) in assets" :key="idx">
+          <li class="border p-2 mb-1 flex justify-between">
+            <span x-text="a.name"></span>
+            <button @click="removeAsset(idx)" class="text-red-500"><i class="fas fa-trash"></i></button>
+          </li>
+        </template>
+      </ul>
+    </section>
+
+    <!-- Data management -->
+    <section>
+      <h2 class="text-xl mb-2" x-text="t('dataMgmt')"></h2>
+      <button @click="exportData()" class="bg-orange-500 text-white px-2 py-1 rounded mr-2" x-text="t('export')"></button>
+      <button @click="clearData()" class="bg-red-600 text-white px-2 py-1 rounded" x-text="t('delete')"></button>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.1/dist/cdn.min.js" defer></script>
+  <script src="app.js"></script>
+</body>
+</html>
