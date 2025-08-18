@@ -6,14 +6,17 @@ const LoginPage = () => {
   const { login, isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/station" replace />;
   }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '400px', margin: '100px auto' }}>
-      <h2>Aurora Audit Platform</h2>
-      <p>Professional Auditing System</p>
-      <button onClick={login} style={{ padding: '10px 20px', marginTop: '20px' }}>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
+      <h1 className="text-3xl font-bold mb-4 text-gray-800">Aurora Audit Platform</h1>
+      <p className="text-gray-600 mb-8">Sign in to start auditing</p>
+      <button
+        onClick={login}
+        className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+      >
         Sign In
       </button>
     </div>

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Container, CssBaseline } from '@mui/material';
@@ -6,6 +7,21 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import AuditDetail from './pages/AuditDetail';
 import Profile from './pages/Profile';
+=======
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './pages/LoginPage';
+import StationSelect from './pages/StationSelect';
+import AuditPage from './pages/AuditPage';
+import DashboardPage from './pages/DashboardPage';
+import { useAuth } from './contexts/AuthContext';
+
+const PrivateRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <div className="p-4">Loading...</div>;
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+>>>>>>> 4c499ac7348d567bfcbfa9340512d947eefef623
 
 function App() {
   const user = getUser();
@@ -19,6 +35,7 @@ function App() {
   }, []);
 
   return (
+<<<<<<< HEAD
     <>
       <CssBaseline />
       <Container maxWidth="lg">
@@ -31,6 +48,36 @@ function App() {
         </Routes>
       </Container>
     </>
+=======
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/station"
+        element={
+          <PrivateRoute>
+            <StationSelect />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/audit/:id?"
+        element={
+          <PrivateRoute>
+            <AuditPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <PrivateRoute>
+            <DashboardPage />
+          </PrivateRoute>
+        }
+      />
+      <Route path="/" element={<Navigate to="/station" replace />} />
+    </Routes>
+>>>>>>> 4c499ac7348d567bfcbfa9340512d947eefef623
   );
 }
 

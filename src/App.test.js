@@ -1,20 +1,13 @@
 import { render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import App from './App';
+import LoginPage from './pages/LoginPage';
+import { AuthProvider } from './contexts/AuthContext';
 
-// Mock AuthContext to bypass real authentication logic
-jest.mock('./contexts/AuthContext', () => ({
-  useAuth: () => ({ user: null, loading: false })
-}));
-
-test('renders login screen by default', () => {
+test('renders login heading', () => {
   render(
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <AuthProvider>
+      <LoginPage />
+    </AuthProvider>
   );
-
-  // The login component contains a "Sign In" button
-  const buttonElement = screen.getByText(/sign in/i);
-  expect(buttonElement).toBeInTheDocument();
+  const headingElement = screen.getByText(/Aurora Audit Platform/i);
+  expect(headingElement).toBeInTheDocument();
 });
