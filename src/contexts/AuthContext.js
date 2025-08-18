@@ -16,14 +16,13 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    netlifyIdentity.init();
-    
-    netlifyIdentity.on('init', user => {
+    // Listen for Netlify Identity events and initialise the widget
+    netlifyIdentity.on('init', (user) => {
       setUser(user);
       setLoading(false);
     });
 
-    netlifyIdentity.on('login', user => {
+    netlifyIdentity.on('login', (user) => {
       setUser(user);
       netlifyIdentity.close();
     });
@@ -32,15 +31,24 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
     });
 
+    // Log any errors so they can be surfaced during development
+    netlifyIdentity.on('error', (err) => {
+      console.error('Netlify Identity error', err);
+      setLoading(false);
+    });
+
+    netlifyIdentity.init();
+
     return () => {
       netlifyIdentity.off('init');
       netlifyIdentity.off('login');
       netlifyIdentity.off('logout');
+      netlifyIdentity.off('error');
     };
   }, []);
 
   const login = () => {
-    netlifyIdentity.open();
+    netlifyIdentity.open('login');
   };
 
   const logout = () => {
