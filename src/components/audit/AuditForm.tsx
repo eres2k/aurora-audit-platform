@@ -110,9 +110,9 @@ export function AuditForm({ auditId }: { auditId?: string }) {
           )}
           
           {activeStep === 1 && (
-            <QuestionEditor
+              <QuestionEditor
               questions={watch('questions')}
-              onChange={(questions) => setValue('questions', questions)}
+              onChange={(questions: any) => setValue('questions', questions)}
             />
           )}
           

@@ -1,5 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
+interface AuditData {
+  [key: string]: any;
+}
+
+interface AuditFilters {
+  status?: string;
+}
+
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
