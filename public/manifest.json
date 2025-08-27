@@ -1,0 +1,8 @@
+{
+  "short_name": "Aurora",
+  "name": "Aurora Audit Platform",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#667eea",
+  "background_color": "#ffffff"
+}
