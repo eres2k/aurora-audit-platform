@@ -7,6 +7,7 @@ import { AuditProvider } from './contexts/AuditContext';
 import { AppRouter } from './routes/AppRouter';
 import { theme } from './theme';
 import { Toaster } from './components/common/Toaster';
+import { NavBar } from './components/common/NavBar';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +26,7 @@ function App() {
         <BrowserRouter>
           <AuthProvider>
             <AuditProvider>
+              <NavBar />
               <AppRouter />
               <Toaster />
             </AuditProvider>
