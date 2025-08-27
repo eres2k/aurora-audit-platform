@@ -1,16 +1,36 @@
+# Netlify Configuration for Aurora Audit Platform
+
 [build]
-  command = "npm run build"
-  publish = "dist"
+  # Build command
+  command = "CI=false npm run build"
+  
+  # Publish directory
+  publish = "build"
+  
+  # Functions directory
   functions = "netlify/functions"
 
 [build.environment]
-  NODE_VERSION = "20"
+  # Node version
+  NODE_VERSION = "18"
+  
+  # Build environment variables
+  CI = "false"
+  GENERATE_SOURCEMAP = "false"
 
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
+# Production context
+[context.production]
+  environment = { REACT_APP_ENV = "production" }
 
+# Deploy preview context
+[context.deploy-preview]
+  environment = { REACT_APP_ENV = "preview" }
+
+# Branch deploy context
+[context.branch-deploy]
+  environment = { REACT_APP_ENV = "development" }
+
+# Redirects and headers
 [[redirects]]
   from = "/*"
   to = "/index.html"
@@ -19,7 +39,43 @@
 [[headers]]
   for = "/*"
   [headers.values]
+    # Security headers
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://netlify-identity.netlify.app; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:;"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    
+    # CSP Header
+    Content-Security-Policy = """
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://identity.netlify.com https://unpkg.com https://cdn.jsdelivr.net;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com data:;
+      img-src 'self' data: https: blob:;
+      connect-src 'self' https://*.netlify.app https://*.supabase.co https://*.firebase.com https://*.firebaseio.com wss://*.supabase.co;
+      frame-src 'self' https://identity.netlify.com;
+    """
+
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Function configuration
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Plugins
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+  [plugins.inputs]
+    # Performance monitoring
+    output_path = "reports/lighthouse.html"
+    
+[[plugins]]
+  package = "netlify-plugin-submit-sitemap"
+  [plugins.inputs]
+    baseUrl = "https://aurora-audit.netlify.app"
+    sitemapPath = "/sitemap.xml"
+    providers = ["google", "bing"]
