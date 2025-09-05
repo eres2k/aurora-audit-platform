@@ -1,27 +1,27 @@
 {
   "name": "aurora-audit-platform",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
-  "description": "Professional auditing platform with multi-user support and mobile optimization",
-  "author": "Aurora Team",
-  "license": "MIT",
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .ts,.tsx"
+  },
   "dependencies": {
-    "@emotion/react": "^11.11.3",
-    "@emotion/styled": "^11.11.0",
-    "@mui/icons-material": "^5.15.3",
-    "@mui/material": "^5.15.3",
-    "@mui/x-data-grid": "^6.18.7",
-    "@react-pdf/renderer": "^3.3.8",
-    "@supabase/supabase-js": "^2.39.3",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "axios": "^1.6.5",
-    "date-fns": "^3.2.0",
-    "localforage": "^1.10.0",
-    "netlify-identity-widget": "^1.9.2",
-    "pdf-lib": "^1.17.1",
-    "react": "^18.2.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.8.0",
+    "@mui/material": "^7.3.1",
+    "netlify-identity-widget": "^1.9.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vite": "^5.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0"
+  }
+}
     "react-dom": "^18.2.0",
     "react-dropzone": "^14.2.3",
     "react-hook-form": "^7.48.2",

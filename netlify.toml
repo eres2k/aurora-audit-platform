@@ -2,10 +2,10 @@
 
 [build]
   # Build command
-  command = "CI=false npm run build"
+  command = "npm run build"
   
   # Publish directory
-  publish = "build"
+  publish = "dist"
   
   # Functions directory
   functions = "netlify/functions"

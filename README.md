@@ -23,3 +23,13 @@ development server.
 ## Deployment
 The project is ready for deployment on Netlify. Connect your repository and set the build
 command to `npm run build`.
+
+---
+
+# Aurora Audit Platform — scaffold
+
+1. Install: npm install
+2. Start dev server: npm start
+3. Configure REACT_APP_NETLIFY_IDENTITY_URL in your environment for Netlify Identity
+
+This is a minimal scaffold. Extend with templates, storage, imports, PDF export and tests as needed.
