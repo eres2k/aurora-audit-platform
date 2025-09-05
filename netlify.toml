@@ -79,3 +79,6 @@
     baseUrl = "https://aurora-audit.netlify.app"
     sitemapPath = "/sitemap.xml"
     providers = ["google", "bing"]
+
+[dev]
+  framework = "vite"

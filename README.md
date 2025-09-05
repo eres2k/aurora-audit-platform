@@ -33,3 +33,25 @@ command to `npm run build`.
 3. Configure REACT_APP_NETLIFY_IDENTITY_URL in your environment for Netlify Identity
 
 This is a minimal scaffold. Extend with templates, storage, imports, PDF export and tests as needed.
+
+---
+
+## Setup
+1. npm install
+2. Set environment variables (see docs/PRODUCTION_README.md)
+3. npm start (dev) or npm run build (prod)
+
+## Testing
+- Unit: npm test
+- Manual: Open app, login via Netlify Identity, create audit, add questions, export PDF/Excel
+- Deploy to Netlify: Push to GitHub, connect repo, set env vars
+
+## Features Implemented
+- Auth via Netlify Identity
+- Audit CRUD with Supabase
+- Question editor with XLSX import/export
+- Basic templates
+- PWA support
+- Responsive design
+
+Expand as needed for full production (e.g., PDF generation, camera integration).
