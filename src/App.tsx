@@ -10,15 +10,13 @@ import Button from '@mui/material/Button';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuditProvider } from './contexts/AuditContext';
 import { UserProvider } from './contexts/UserContext';
-import { theme } from './theme';
-import { Toaster } from './components/common/Toaster';
-import { NavBar } from './components/common/NavBar';
 import Login from './components/Login';
 import AuditList from './components/AuditList';
 import AuditForm from './components/AuditForm';
 import QuestionEditor from './components/QuestionEditor';
 import TemplateManager from './components/TemplateManager';
 import { initIdentity, getCurrentUser } from './services/netlifyIdentity';
+import { SafetyCultureAuditPage } from './pages/SafetyCultureAuditPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +59,7 @@ function App() {
                     <Button color="inherit" component={Link} to="/">Audits</Button>
                     <Button color="inherit" component={Link} to="/questions">Questions</Button>
                     <Button color="inherit" component={Link} to="/templates">Templates</Button>
+                    <Button color="inherit" component={Link} to="/audits/safety-culture">Safety Culture</Button>
                     <Button color="inherit" component={Link} to="/login">Login</Button>
                   </Toolbar>
                 </AppBar>
@@ -68,6 +67,7 @@ function App() {
                   <Routes>
                     <Route path="/" element={<AuditList />} />
                     <Route path="/audits/new" element={<AuditForm />} />
+                    <Route path="/audits/safety-culture" element={<SafetyCultureAuditPage />} />
                     <Route path="/audits/:id" element={<AuditForm />} />
                     <Route path="/questions" element={<QuestionEditor />} />
                     <Route path="/templates" element={<TemplateManager />} />

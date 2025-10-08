@@ -18,11 +18,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     netlifyIdentity.init();
-    netlifyIdentity.on('login', (user) => {
+    const current = netlifyIdentity.currentUser();
+    if (current) {
+      setUser(current);
+    }
+    const handleLogin = (user: User) => {
       setUser(user);
       netlifyIdentity.close();
-    });
-    netlifyIdentity.on('logout', () => setUser(null));
+    };
+    const handleLogout = () => setUser(null);
+
+    netlifyIdentity.on('login', handleLogin);
+    netlifyIdentity.on('logout', handleLogout);
+
+    return () => {
+      netlifyIdentity.off('login', handleLogin);
+      netlifyIdentity.off('logout', handleLogout);
+    };
   }, []);
 
   const login = () => netlifyIdentity.open('login');
