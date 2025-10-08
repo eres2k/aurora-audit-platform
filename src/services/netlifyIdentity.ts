@@ -1,9 +1,18 @@
-import netlifyIdentity from "netlify-identity-widget";
+import netlifyIdentity from 'netlify-identity-widget';
+
+function resolveIdentityUrl() {
+  const viteUrl = (import.meta as any)?.env?.VITE_NETLIFY_IDENTITY_URL;
+  if (viteUrl) {
+    return viteUrl;
+  }
+
+  const reactUrl = (process.env as Record<string, string | undefined>)?.REACT_APP_NETLIFY_IDENTITY_URL;
+  return reactUrl;
+}
 
 export function initIdentity() {
-  const url = process.env.REACT_APP_NETLIFY_IDENTITY_URL;
+  const url = resolveIdentityUrl();
   if (url) {
-    // point the widget to the site's Identity endpoint (Netlify-hosted)
     netlifyIdentity.init({ APIUrl: url });
   } else {
     netlifyIdentity.init();
