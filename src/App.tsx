@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -9,16 +9,13 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import { AuthProvider } from './contexts/AuthContext';
 import { AuditProvider } from './contexts/AuditContext';
-import { UserProvider } from './contexts/UserContext';
 import { theme } from './theme';
-import { Toaster } from './components/common/Toaster';
-import { NavBar } from './components/common/NavBar';
 import Login from './components/Login';
 import AuditList from './components/AuditList';
 import AuditForm from './components/AuditForm';
 import QuestionEditor from './components/QuestionEditor';
 import TemplateManager from './components/TemplateManager';
-import { initIdentity, getCurrentUser } from './services/netlifyIdentity';
+import { useAuth } from './hooks/useAuth';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,13 +32,51 @@ const theme = createTheme({
   },
 });
 
-function App() {
-  const [user, setUser] = useState<any>(null);
+function AppShell() {
+  const { user, login, logout } = useAuth();
 
+  return (
+    <>
+      <AppBar position="static">
+        <Toolbar sx={{ gap: 2 }}>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            Safety Culture Audit Platform
+          </Typography>
+          <Button color="inherit" component={Link} to="/">
+            Audits
+          </Button>
+          <Button color="inherit" component={Link} to="/questions">
+            Questions
+          </Button>
+          <Button color="inherit" component={Link} to="/templates">
+            Templates
+          </Button>
+          {user ? (
+            <Button color="inherit" onClick={logout} data-testid="appbar-logout">
+              Sign out
+            </Button>
+          ) : (
+            <Button color="inherit" onClick={login} data-testid="appbar-login">
+              Sign in
+            </Button>
+          )}
+        </Toolbar>
+      </AppBar>
+      <main style={{ padding: 16 }}>
+        <Routes>
+          <Route path="/" element={<AuditList />} />
+          <Route path="/audits/:id" element={<AuditForm />} />
+          <Route path="/questions" element={<QuestionEditor />} />
+          <Route path="/templates" element={<TemplateManager />} />
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </main>
+    </>
+  );
+}
+
+function App() {
   useEffect(() => {
-    initIdentity();
-    setUser(getCurrentUser());
-    // Register service worker for PWA/offline
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js');
     }
@@ -54,27 +89,7 @@ function App() {
         <BrowserRouter>
           <AuthProvider>
             <AuditProvider>
-              <UserProvider value={{ user, setUser }}>
-                <AppBar position="static">
-                  <Toolbar>
-                    <Typography variant="h6">Aurora Audit Platform</Typography>
-                    <Button color="inherit" component={Link} to="/">Audits</Button>
-                    <Button color="inherit" component={Link} to="/questions">Questions</Button>
-                    <Button color="inherit" component={Link} to="/templates">Templates</Button>
-                    <Button color="inherit" component={Link} to="/login">Login</Button>
-                  </Toolbar>
-                </AppBar>
-                <main style={{ padding: 16 }}>
-                  <Routes>
-                    <Route path="/" element={<AuditList />} />
-                    <Route path="/audits/new" element={<AuditForm />} />
-                    <Route path="/audits/:id" element={<AuditForm />} />
-                    <Route path="/questions" element={<QuestionEditor />} />
-                    <Route path="/templates" element={<TemplateManager />} />
-                    <Route path="/login" element={<Login />} />
-                  </Routes>
-                </main>
-              </UserProvider>
+              <AppShell />
             </AuditProvider>
           </AuthProvider>
         </BrowserRouter>

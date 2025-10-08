@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "netlify-identity-widget": "^1.9.1",
+    "@netlify/blobs": "^8.1.0",
     "@mui/material": "^7.3.1",
     "react-dom": "^18.2.0",
     "react": "^18.2.0",
@@ -19,6 +20,7 @@
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
     "@supabase/supabase-js": "^2.39.0",
+    "uuid": "^9.0.1",
     "xlsx": "^0.18.5",
     "@react-pdf/renderer": "^4.3.0",
     "react-dropzone": "^14.2.3",
