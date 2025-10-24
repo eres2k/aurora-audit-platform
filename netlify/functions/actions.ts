@@ -11,11 +11,11 @@ const ensureToken = (event: HandlerEvent) => {
 };
 
 export const handler: Handler = async (event: HandlerEvent) => {
-  const store = getStore(ACTION_STORE);
   const { siteId, status, assigneeId } = event.queryStringParameters || {};
 
   try {
     ensureToken(event);
+    const store = await getStore(ACTION_STORE);
 
     switch (event.httpMethod) {
       case 'GET': {
