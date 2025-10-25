@@ -9,6 +9,7 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+  included_files = ["netlify/functions/**"]
 
 [[redirects]]
   from = "/api/*"
@@ -27,6 +28,14 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
 
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+
 [context.production.environment]
   REGION = "eu"
   RETENTION_MONTHS = "24"
+  BLOBS_CONTEXT = "production"

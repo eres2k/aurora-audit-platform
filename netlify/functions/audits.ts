@@ -1,115 +1,178 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
+import { Handler } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
+import jwt from 'jsonwebtoken';
 
-const AUDIT_STORE = 'audits';
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+} as const;
 
-const ensureToken = (event: HandlerEvent) => {
-  const token = event.headers.authorization?.replace('Bearer ', '');
-  if (!token) {
-    throw new Error('Unauthorized');
+export const handler: Handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: CORS_HEADERS, body: '' };
   }
-};
-
-export const handler: Handler = async (event: HandlerEvent) => {
-  const { id, action, siteId, from, to, templateId } = event.queryStringParameters || {};
 
   try {
-    ensureToken(event);
-    const store = await getStore(AUDIT_STORE);
-
-    switch (event.httpMethod) {
-      case 'GET': {
-        if (id) {
-          const audit = await store.get(id);
-          return {
-            statusCode: 200,
-            body: audit ?? '{}'
-          };
-        }
-
-        const list = await store.list();
-        const entries = Array.isArray((list as any)?.blobs)
-          ? (list as any).blobs
-          : Array.isArray((list as any)?.keys)
-            ? (list as any).keys.map((key: string) => ({ key }))
-            : [];
-        const audits: unknown[] = [];
-
-        for (const entry of entries) {
-          const key = typeof entry === 'string' ? entry : entry.key;
-          const auditRaw = await store.get(key);
-          if (!auditRaw) continue;
-          const data = JSON.parse(auditRaw);
-
-          if (siteId && data.siteId !== siteId) continue;
-          if (from && data.completedAt && new Date(data.completedAt) < new Date(from)) continue;
-          if (to && data.completedAt && new Date(data.completedAt) > new Date(to)) continue;
-          if (templateId && data.templateId !== templateId) continue;
-
-          audits.push(data);
-        }
-
-        return {
-          statusCode: 200,
-          body: JSON.stringify(audits)
-        };
-      }
-
-      case 'POST': {
-        if (action === 'complete') {
-          if (!id) {
-            return { statusCode: 400, body: 'Audit ID required' };
-          }
-          const audit = JSON.parse(event.body || '{}');
-          audit.completedAt = new Date().toISOString();
-          audit.status = 'COMPLETED';
-          const total = (audit.items || []).filter((i: any) => i.response !== 'NA').length;
-          const passed = (audit.items || []).filter((i: any) => i.response === 'YES').length;
-          audit.score = {
-            total,
-            passed,
-            percent: total > 0 ? Math.round((passed / total) * 100) : 0
-          };
-          await store.set(id, JSON.stringify(audit));
-
-          return {
-            statusCode: 200,
-            body: JSON.stringify(audit)
-          };
-        }
-
-        const audit = JSON.parse(event.body || '{}');
-        const auditId = `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        audit.auditId = auditId;
-        await store.set(auditId, JSON.stringify(audit));
-
-        return {
-          statusCode: 200,
-          body: JSON.stringify(audit)
-        };
-      }
-
-      case 'PUT': {
-        if (!id) {
-          return { statusCode: 400, body: 'Audit ID required' };
-        }
-        const audit = JSON.parse(event.body || '{}');
-        await store.set(id, JSON.stringify(audit));
-
-        return {
-          statusCode: 200,
-          body: JSON.stringify(audit)
-        };
-      }
-
-      default:
-        return { statusCode: 405, body: 'Method Not Allowed' };
+    const token = event.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'No authorization token' }),
+      };
     }
+
+    const user = jwt.decode(token) as { sub?: string; email?: string } | null;
+    if (!user?.sub) {
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Invalid token' }),
+      };
+    }
+
+    const store = getStore('audits');
+    const params = event.queryStringParameters || {};
+
+    if (event.httpMethod === 'POST' && params.action === 'complete' && params.id) {
+      const auditId = params.id;
+      const auditData = JSON.parse(event.body || '{}');
+
+      if (!auditData.siteId || !auditData.templateId) {
+        return {
+          statusCode: 400,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({
+            error: 'Missing required fields',
+            details: 'siteId and templateId are required',
+          }),
+        };
+      }
+
+      const completedAudit: Record<string, unknown> & {
+        items?: Array<{ response?: string }>;
+        score?: { total: number; passed: number; percent: number };
+      } = {
+        ...auditData,
+        auditId,
+        status: 'COMPLETED',
+        completedAt: new Date().toISOString(),
+        completedBy: user.sub,
+        locked: true,
+      };
+
+      if (completedAudit.items?.length) {
+        const applicable = completedAudit.items.filter(
+          (item) => item.response !== 'N/A' && item.response !== 'N.A.'
+        );
+        const passed = applicable.filter(
+          (item) => item.response === 'YES' || item.response === 'PASS'
+        );
+
+        completedAudit.score = {
+          total: applicable.length,
+          passed: passed.length,
+          percent: applicable.length > 0 ? Math.round((passed.length / applicable.length) * 100) : 0,
+        };
+      }
+
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const blobPath = `${completedAudit.siteId}/${year}/${month}/${auditId}.json`;
+
+      try {
+        await store.setJSON(blobPath, completedAudit);
+
+        const indexPath = `_index/${completedAudit.siteId}/${year}-${month}.json`;
+        const monthIndex = ((await store.getJSON(indexPath)) as { audits: Array<Record<string, unknown>> }) ?? {
+          audits: [],
+        };
+
+        if (!monthIndex.audits.some((a) => a.auditId === auditId)) {
+          monthIndex.audits.push({
+            auditId,
+            completedAt: completedAudit.completedAt,
+            templateId: completedAudit.templateId,
+            score: completedAudit.score,
+            auditorName: (completedAudit as any)?.auditor?.name ?? user.email,
+          });
+          await store.setJSON(indexPath, monthIndex);
+        }
+
+        return {
+          statusCode: 200,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({
+            success: true,
+            auditId,
+            path: blobPath,
+            message: 'Audit completed successfully',
+          }),
+        };
+      } catch (blobError) {
+        console.error('Blob storage error:', blobError);
+        return {
+          statusCode: 500,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({
+            error: 'Failed to store audit',
+            details: blobError instanceof Error ? blobError.message : 'Unknown blob error',
+          }),
+        };
+      }
+    }
+
+    if (event.httpMethod === 'GET') {
+      const siteId = params.siteId;
+      if (!siteId) {
+        return {
+          statusCode: 400,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({ error: 'siteId parameter required' }),
+        };
+      }
+
+      const audits: Array<Record<string, unknown>> = [];
+      const currentYear = new Date().getFullYear();
+      const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+
+      try {
+        const indexPath = `_index/${siteId}/${currentYear}-${currentMonth}.json`;
+        const monthIndex = (await store.getJSON(indexPath)) as { audits?: Array<Record<string, unknown>> } | null;
+        if (monthIndex?.audits) {
+          audits.push(...monthIndex.audits);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('No audits found for current month/site', { siteId, error });
+        }
+      }
+
+      return {
+        statusCode: 200,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ audits }),
+      };
+    }
+
+    return {
+      statusCode: 405,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ error: 'Method not allowed' }),
+    };
   } catch (error) {
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return { statusCode: 401, body: 'Unauthorized' };
-    }
-    console.error('audits function error', error);
-    return { statusCode: 500, body: 'Internal Server Error' };
+    console.error('Function error:', error);
+    return {
+      statusCode: 500,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        stack:
+          process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined,
+      }),
+    };
   }
 };
