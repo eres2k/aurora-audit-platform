@@ -1,6 +1,5 @@
 import { Handler } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
-import jwt from 'jsonwebtoken';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -8,27 +7,18 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 } as const;
 
-export const handler: Handler = async (event) => {
+export const handler: Handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: CORS_HEADERS, body: '' };
   }
 
   try {
-    const token = event.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return {
-        statusCode: 401,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ error: 'No authorization token' }),
-      };
-    }
-
-    const user = jwt.decode(token) as { sub?: string; email?: string } | null;
+    const user = context.clientContext?.user;
     if (!user?.sub) {
       return {
         statusCode: 401,
         headers: CORS_HEADERS,
-        body: JSON.stringify({ error: 'Invalid token' }),
+        body: JSON.stringify({ error: 'Unauthorized' }),
       };
     }
 
