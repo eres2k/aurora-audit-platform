@@ -9,16 +9,17 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
+    // Set the expected environment variables for Netlify Blobs
+    process.env.NETLIFY_BLOBS_SITE_ID = process.env.SITE_ID;
+    process.env.NETLIFY_BLOBS_TOKEN = process.env.NETLIFY_BLOBS_TOKEN;
+
     console.log('SITE_ID:', process.env.SITE_ID);
     console.log('NETLIFY_BLOBS_TOKEN exists:', !!process.env.NETLIFY_BLOBS_TOKEN);
+    console.log('NETLIFY_BLOBS_SITE_ID set to:', process.env.NETLIFY_BLOBS_SITE_ID);
     const user = requireAuth(getUser(context));
     const userRole = user.app_metadata?.role || 'VIEWER';
 
-    // @ts-ignore - getStore accepts options in runtime despite type definitions
-    const store = getStore('audits', {
-      siteID: process.env.SITE_ID,
-      token: process.env.NETLIFY_BLOBS_TOKEN
-    });
+    const store = getStore('audits');
     const params = event.queryStringParameters || {};
 
     if (event.httpMethod === 'POST' && !params.action) {
