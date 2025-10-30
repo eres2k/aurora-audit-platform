@@ -12,7 +12,11 @@ export const handler: Handler = async (event, context) => {
     const user = requireAuth(getUser(context));
     const userRole = user.app_metadata?.role || 'VIEWER';
 
-    const store = getStore('audits');
+    // @ts-ignore - getStore accepts options in runtime despite type definitions
+    const store = getStore('audits', {
+      siteID: (context as any).site.id,
+      token: process.env.NETLIFY_BLOBS_TOKEN
+    });
     const params = event.queryStringParameters || {};
 
     if (event.httpMethod === 'POST' && !params.action) {
