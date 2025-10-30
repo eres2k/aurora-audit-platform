@@ -1,4 +1,4 @@
-import { HandlerEvent } from '@netlify/functions';
+
 
 export interface AuthUser {
   sub: string;
@@ -12,8 +12,8 @@ export interface AuthUser {
   };
 }
 
-export const getUser = (event: HandlerEvent): AuthUser | null => {
-  return event.requestContext?.identity?.user || null;
+export const getUser = (context: any): AuthUser | null => {
+  return context.clientContext?.user || null;
 };
 
 export const requireAuth = (user: AuthUser | null): AuthUser => {

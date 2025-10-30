@@ -1,17 +1,17 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
+import type { Handler } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 import { getUser, requireAuth, canAccessSite, CORS_HEADERS } from './auth.js';
 import { randomUUID } from 'crypto';
 
 const ACTION_STORE = 'actions';
 
-export const handler: Handler = async (event: HandlerEvent) => {
+export const handler: Handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: CORS_HEADERS, body: '' };
   }
 
   try {
-    const user = requireAuth(getUser(event));
+    const user = requireAuth(getUser(context));
     const store = getStore(ACTION_STORE);
     const { siteId, status, assigneeId } = event.queryStringParameters || {};
 

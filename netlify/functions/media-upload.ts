@@ -1,17 +1,17 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
+import type { Handler } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
 import { getUser, requireAuth, CORS_HEADERS } from './auth.js';
 import { randomUUID } from 'crypto';
 
 const MEDIA_STORE = 'media';
 
-export const handler: Handler = async (event: HandlerEvent) => {
+export const handler: Handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: CORS_HEADERS, body: '' };
   }
 
   try {
-    const user = requireAuth(getUser(event));
+    requireAuth(getUser(context));
     const store = getStore(MEDIA_STORE);
 
     if (event.httpMethod === 'POST') {

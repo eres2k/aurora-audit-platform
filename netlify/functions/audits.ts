@@ -1,6 +1,6 @@
 import { Handler } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
-import { getUser, requireAuth, hasRole, canAccessSite, CORS_HEADERS } from './auth.js';
+import { getUser, requireAuth, canAccessSite, CORS_HEADERS } from './auth.js';
 import { randomUUID } from 'crypto';
 
 export const handler: Handler = async (event, context) => {
@@ -9,7 +9,7 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
-    const user = requireAuth(getUser(event));
+    const user = requireAuth(getUser(context));
     const userRole = user.app_metadata?.role || 'VIEWER';
 
     const store = getStore('audits');
