@@ -1,5 +1,5 @@
 import { Handler } from '@netlify/functions';
-import { createClient } from '@supabase/supabase-js';
+import { BlobStore } from '@netlify/blobs';
 import { getUser, requireAuth, canAccessSite, CORS_HEADERS } from './auth.js';
 
 export const handler: Handler = async (event, context) => {
