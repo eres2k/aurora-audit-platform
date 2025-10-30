@@ -1,7 +1,6 @@
 import { Handler } from '@netlify/functions';
-import { getStore } from '@netlify/blobs';
+import { createClient } from '@supabase/supabase-js';
 import { getUser, requireAuth, canAccessSite, CORS_HEADERS } from './auth.js';
-import { randomUUID } from 'crypto';
 
 export const handler: Handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -9,80 +8,11 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
-    // Set the expected environment variables for Netlify Blobs
-    process.env.NETLIFY_BLOBS_SITE_ID = process.env.SITE_ID;
-    process.env.NETLIFY_BLOBS_TOKEN = process.env.NETLIFY_BLOBS_TOKEN;
-
-    console.log('SITE_ID:', process.env.SITE_ID);
-    console.log('NETLIFY_BLOBS_TOKEN exists:', !!process.env.NETLIFY_BLOBS_TOKEN);
-    console.log('NETLIFY_BLOBS_SITE_ID set to:', process.env.NETLIFY_BLOBS_SITE_ID);
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
     const user = requireAuth(getUser(context));
-    const userRole = user.app_metadata?.role || 'VIEWER';
-
-    const store = getStore('audits');
     const params = event.queryStringParameters || {};
 
-    if (event.httpMethod === 'POST' && !params.action) {
-      // Create or update draft
-      const auditData = JSON.parse(event.body || '{}');
-      const auditId = params.id || randomUUID();
 
-      if (!auditData.siteId || !auditData.templateId) {
-        return {
-          statusCode: 400,
-          headers: CORS_HEADERS,
-          body: JSON.stringify({
-            error: 'Missing required fields',
-            details: 'siteId and templateId are required',
-          }),
-        };
-      }
-
-      if (!canAccessSite(user, auditData.siteId)) {
-        return {
-          statusCode: 403,
-          headers: CORS_HEADERS,
-          body: JSON.stringify({ error: 'Access denied to site' }),
-        };
-      }
-
-      const draftAudit = {
-        ...auditData,
-        auditId,
-        status: 'DRAFT',
-        startedAt: auditData.startedAt || new Date().toISOString(),
-        auditor: {
-          id: user.sub,
-          name: user.user_metadata?.name || user.email,
-          role: userRole,
-        },
-      };
-
-      // For drafts, store in a drafts namespace or use a temp path
-      const draftPath = `drafts/${auditId}.json`;
-
-      try {
-        await store.setJSON(draftPath, draftAudit);
-        return {
-          statusCode: 200,
-          headers: CORS_HEADERS,
-          body: JSON.stringify({
-            success: true,
-            audit: draftAudit,
-          }),
-        };
-      } catch (blobError) {
-        console.error('Blob storage error:', blobError);
-        return {
-          statusCode: 500,
-          headers: CORS_HEADERS,
-          body: JSON.stringify({
-            error: 'Failed to save draft',
-            details: blobError instanceof Error ? blobError.message : 'Unknown blob error',
-          }),
-        };
-      }
-    }
 
     if (event.httpMethod === 'POST' && params.action === 'complete' && params.id) {
       const auditId = params.id;
@@ -135,27 +65,55 @@ export const handler: Handler = async (event, context) => {
       console.log('Storing audit at', blobPath);
 
       try {
-        await store.setJSON(blobPath, completedAudit);
+        // Insert the completed audit
+        const { error: insertError } = await supabase.from('audits').insert({
+          audit_id: auditId,
+          site_id: completedAudit.siteId,
+          year: date.getFullYear(),
+          month: date.getMonth() + 1,
+          data: completedAudit
+        });
+
+        if (insertError) {
+          console.error('Supabase insert error:', insertError);
+          throw insertError;
+        }
         console.log('Stored audit successfully');
 
-        const indexPath = `_index/${completedAudit.siteId}/${year}-${month}.json`;
-        let monthIndex: { audits: Array<Record<string, unknown>> };
-        try {
-          const indexData = await store.get(indexPath);
-          monthIndex = indexData ? JSON.parse(indexData as string) : { audits: [] };
-        } catch {
-          monthIndex = { audits: [] };
+        // Update the index
+        const yearMonth = `${date.getFullYear()}-${month}`;
+        const { data: indexData, error: selectError } = await supabase
+          .from('audit_index')
+          .select('audits')
+          .eq('site_id', completedAudit.siteId)
+          .eq('year_month', yearMonth)
+          .single();
+
+        if (selectError && selectError.code !== 'PGRST116') {
+          console.error('Supabase select index error:', selectError);
+          throw selectError;
         }
 
-        if (!monthIndex.audits.some((a) => a.auditId === auditId)) {
-          monthIndex.audits.push({
+        let audits = indexData?.audits || [];
+        if (!audits.some((a: any) => a.auditId === auditId)) {
+          audits.push({
             auditId,
             completedAt: completedAudit.completedAt,
             templateId: completedAudit.templateId,
             score: completedAudit.score,
             auditorName: (completedAudit as any)?.auditor?.name ?? user.email,
           });
-          await store.setJSON(indexPath, monthIndex);
+
+          const { error: upsertError } = await supabase.from('audit_index').upsert({
+            site_id: completedAudit.siteId,
+            year_month: yearMonth,
+            audits
+          });
+
+          if (upsertError) {
+            console.error('Supabase upsert index error:', upsertError);
+            throw upsertError;
+          }
           console.log('Updated index successfully');
         } else {
           console.log('Audit already in index');
@@ -167,18 +125,17 @@ export const handler: Handler = async (event, context) => {
           body: JSON.stringify({
             success: true,
             auditId,
-            path: blobPath,
             message: 'Audit completed successfully',
           }),
         };
-      } catch (blobError) {
-        console.error('Blob storage error:', blobError, { blobPath, auditId, siteId: completedAudit.siteId });
+      } catch (error) {
+        console.error('Storage error:', error);
         return {
           statusCode: 500,
           headers: CORS_HEADERS,
           body: JSON.stringify({
             error: 'Failed to store audit',
-            details: blobError instanceof Error ? blobError.message : 'Unknown blob error',
+            details: error instanceof Error ? error.message : 'Unknown error',
           }),
         };
       }
@@ -208,31 +165,31 @@ export const handler: Handler = async (event, context) => {
         }
 
         try {
-          // Search in recent months
-          const currentDate = new Date();
-          for (let i = 0; i < 12; i++) {
-            const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const auditPath = `${siteId}/${year}/${month}/${auditId}.json`;
-            try {
-              const auditData = await store.get(auditPath);
-              if (auditData) {
-                const audit = JSON.parse(auditData as string);
-                return {
-                  statusCode: 200,
-                  headers: CORS_HEADERS,
-                  body: JSON.stringify(audit),
-                };
-              }
-            } catch {}
+          const { data, error } = await supabase
+            .from('audits')
+            .select('data')
+            .eq('audit_id', auditId)
+            .eq('site_id', siteId)
+            .single();
+
+          if (error) {
+            if (error.code === 'PGRST116') {
+              return {
+                statusCode: 404,
+                headers: CORS_HEADERS,
+                body: JSON.stringify({ error: 'Audit not found' }),
+              };
+            }
+            throw error;
           }
+
           return {
-            statusCode: 404,
+            statusCode: 200,
             headers: CORS_HEADERS,
-            body: JSON.stringify({ error: 'Audit not found' }),
+            body: JSON.stringify(data.data),
           };
         } catch (error) {
+          console.error('Failed to retrieve audit:', error);
           return {
             statusCode: 500,
             headers: CORS_HEADERS,
@@ -258,28 +215,37 @@ export const handler: Handler = async (event, context) => {
           };
         }
 
-        const audits: Array<Record<string, unknown>> = [];
-        const currentYear = new Date().getFullYear();
-        const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
-
         try {
-          const indexPath = `_index/${siteId}/${currentYear}-${currentMonth}.json`;
-          const indexData = await store.get(indexPath);
-          const monthIndex = indexData ? JSON.parse(indexData as string) : null;
-          if (monthIndex?.audits) {
-            audits.push(...monthIndex.audits);
-          }
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('No audits found for current month/site', { siteId, error });
-          }
-        }
+          const currentYear = new Date().getFullYear();
+          const currentMonth = new Date().getMonth() + 1;
+          const yearMonth = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
-        return {
-          statusCode: 200,
-          headers: CORS_HEADERS,
-          body: JSON.stringify({ audits }),
-        };
+          const { data, error } = await supabase
+            .from('audit_index')
+            .select('audits')
+            .eq('site_id', siteId)
+            .eq('year_month', yearMonth)
+            .single();
+
+          if (error && error.code !== 'PGRST116') {
+            throw error;
+          }
+
+          const audits = data?.audits || [];
+
+          return {
+            statusCode: 200,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({ audits }),
+          };
+        } catch (error) {
+          console.error('Failed to list audits:', error);
+          return {
+            statusCode: 500,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({ error: 'Failed to list audits' }),
+          };
+        }
       }
     }
 
