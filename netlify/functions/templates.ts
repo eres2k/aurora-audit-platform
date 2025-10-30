@@ -1,5 +1,5 @@
-import type { Handler, HandlerEvent } from '@netlify/functions';
-import { getUser, requireAuth, CORS_HEADERS } from './auth.js';
+import type { Handler } from '@netlify/functions';
+import { CORS_HEADERS } from './auth.js';
 
 const templates = [
   {
@@ -36,14 +36,12 @@ const templates = [
   }
 ];
 
-export const handler: Handler = async (event: HandlerEvent) => {
+export const handler: Handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: CORS_HEADERS, body: '' };
   }
 
   try {
-    requireAuth(getUser(event));
-
     const { id } = event.queryStringParameters || {};
 
     if (id) {
