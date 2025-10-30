@@ -9,6 +9,8 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
+    console.log('SITE_ID:', process.env.SITE_ID);
+    console.log('NETLIFY_BLOBS_TOKEN exists:', !!process.env.NETLIFY_BLOBS_TOKEN);
     const user = requireAuth(getUser(context));
     const userRole = user.app_metadata?.role || 'VIEWER';
 
