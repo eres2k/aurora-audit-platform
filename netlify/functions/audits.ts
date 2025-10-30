@@ -14,7 +14,7 @@ export const handler: Handler = async (event, context) => {
 
     // @ts-ignore - getStore accepts options in runtime despite type definitions
     const store = getStore('audits', {
-      siteID: (context as any).site.id,
+      siteID: process.env.SITE_ID,
       token: process.env.NETLIFY_BLOBS_TOKEN
     });
     const params = event.queryStringParameters || {};
