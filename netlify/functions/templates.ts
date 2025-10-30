@@ -36,7 +36,7 @@ const templates = [
   }
 ];
 
-export const handler: Handler = async (event, context) => {
+export const handler: Handler = async (event, _context) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: CORS_HEADERS, body: '' };
   }
