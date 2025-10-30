@@ -79,7 +79,9 @@ export const handler: Handler = async (event, context) => {
 
     if (event.httpMethod === 'POST' && params.action === 'complete' && params.id) {
       const auditId = params.id;
+      console.log('Starting complete audit', { auditId, hasBody: !!event.body, userId: user.sub });
       const auditData = JSON.parse(event.body || '{}');
+      console.log('Parsed auditData', { siteId: auditData.siteId, templateId: auditData.templateId, itemCount: auditData.items?.length, status: auditData.status });
 
       if (!auditData.siteId || !auditData.templateId) {
         return {
@@ -123,9 +125,11 @@ export const handler: Handler = async (event, context) => {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const blobPath = `${completedAudit.siteId}/${year}/${month}/${auditId}.json`;
+      console.log('Storing audit at', blobPath);
 
       try {
         await store.setJSON(blobPath, completedAudit);
+        console.log('Stored audit successfully');
 
         const indexPath = `_index/${completedAudit.siteId}/${year}-${month}.json`;
         let monthIndex: { audits: Array<Record<string, unknown>> };
@@ -145,6 +149,9 @@ export const handler: Handler = async (event, context) => {
             auditorName: (completedAudit as any)?.auditor?.name ?? user.email,
           });
           await store.setJSON(indexPath, monthIndex);
+          console.log('Updated index successfully');
+        } else {
+          console.log('Audit already in index');
         }
 
         return {
@@ -158,7 +165,7 @@ export const handler: Handler = async (event, context) => {
           }),
         };
       } catch (blobError) {
-        console.error('Blob storage error:', blobError);
+        console.error('Blob storage error:', blobError, { blobPath, auditId, siteId: completedAudit.siteId });
         return {
           statusCode: 500,
           headers: CORS_HEADERS,
