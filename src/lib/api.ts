@@ -67,10 +67,10 @@ class ApiClient {
     return this.request<Audit>(`/audits?id=${id}`);
   }
 
-  async getUploadUrl(filename: string): Promise<{ uploadUrl: string; mediaId: string }> {
+  async getUploadUrl(auditId: string): Promise<{ uploadUrl: string; mediaId: string }> {
     return this.request('/media-upload', {
       method: 'POST',
-      body: JSON.stringify({ filename })
+      body: JSON.stringify({ auditId })
     });
   }
 

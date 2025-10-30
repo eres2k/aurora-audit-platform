@@ -3,47 +3,79 @@ import type { User } from '@/types';
 
 netlifyIdentity.init();
 
+type AuthListener = (user: User | null) => void;
+const listeners = new Set<AuthListener>();
+
+const mapIdentityUser = (identityUser: any): User | null => {
+  if (!identityUser) return null;
+
+  return {
+    id: identityUser.id,
+    email: identityUser.email,
+    name: identityUser.user_metadata?.name || identityUser.email,
+    role: (identityUser.app_metadata as any)?.role || 'VIEWER',
+    siteIds: (identityUser.user_metadata as any)?.site_ids || [],
+  };
+};
+
+const getCurrentUser = (): User | null => {
+  return mapIdentityUser(netlifyIdentity.currentUser());
+};
+
+const notifyAuthChange = () => {
+  const currentUser = getCurrentUser();
+  listeners.forEach((listener) => listener(currentUser));
+};
+
+netlifyIdentity.off?.('login', notifyAuthChange);
+netlifyIdentity.off?.('logout', notifyAuthChange);
+netlifyIdentity.on('login', notifyAuthChange);
+netlifyIdentity.on('logout', notifyAuthChange);
+
 export const auth = {
-  login: (email: string, password: string) => {
-    return netlifyIdentity.login(email, password);
+  login: async (email: string, password: string) => {
+    const client = netlifyIdentity.gotrue;
+    if (!client) {
+      throw new Error('Netlify Identity client unavailable');
+    }
+
+    const user = await client.login(email, password, true);
+    if (user) {
+      (netlifyIdentity as any).store.user = user;
+    }
+    notifyAuthChange();
   },
 
-  logout: () => {
-    return netlifyIdentity.logout();
+  logout: async () => {
+    await netlifyIdentity.logout();
+    (netlifyIdentity as any).store.user = null;
+    notifyAuthChange();
   },
 
-  signup: (email: string, password: string) => {
-    return netlifyIdentity.signup(email, password);
+  signup: async (email: string, password: string) => {
+    const client = netlifyIdentity.gotrue;
+    if (!client) {
+      throw new Error('Netlify Identity client unavailable');
+    }
+
+    const user = await client.signup(email, password);
+    if (user) {
+      (netlifyIdentity as any).store.user = user;
+    }
+    notifyAuthChange();
   },
 
-  getCurrentUser: (): User | null => {
-    const user = netlifyIdentity.currentUser();
-    if (!user) return null;
-
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.user_metadata?.name || user.email,
-      role: (user.app_metadata as any)?.role || 'VIEWER',
-      siteIds: (user.user_metadata as any)?.site_ids || []
-    };
-  },
+  getCurrentUser,
 
   getToken: () => {
     const user = netlifyIdentity.currentUser();
     return user?.token?.access_token;
   },
 
-  onAuthChange: (callback: (user: User | null) => void) => {
-    const handleLogin = () => callback(auth.getCurrentUser());
-    const handleLogout = () => callback(null);
-
-    netlifyIdentity.on('login', handleLogin);
-    netlifyIdentity.on('logout', handleLogout);
-
+  onAuthChange: (callback: AuthListener) => {
+    listeners.add(callback);
     return () => {
-      netlifyIdentity.off('login', handleLogin);
-      netlifyIdentity.off('logout', handleLogout);
+      listeners.delete(callback);
     };
-  }
+  },
 };

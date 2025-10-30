@@ -1,4 +1,5 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
+import { getUser, requireAuth, CORS_HEADERS } from './auth.js';
 
 const templates = [
   {
@@ -36,21 +37,45 @@ const templates = [
 ];
 
 export const handler: Handler = async (event: HandlerEvent) => {
-  const { id } = event.queryStringParameters || {};
-
-  if (id) {
-    const template = templates.find((t) => t.templateId === id);
-    if (!template) {
-      return { statusCode: 404, body: 'Template not found' };
-    }
-    return {
-      statusCode: 200,
-      body: JSON.stringify(template)
-    };
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: CORS_HEADERS, body: '' };
   }
 
-  return {
-    statusCode: 200,
-    body: JSON.stringify(templates)
-  };
+  try {
+    requireAuth(getUser(event));
+
+    const { id } = event.queryStringParameters || {};
+
+    if (id) {
+      const template = templates.find((t) => t.templateId === id);
+      if (!template) {
+        return {
+          statusCode: 404,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({ error: 'Template not found' }),
+        };
+      }
+      return {
+        statusCode: 200,
+        headers: CORS_HEADERS,
+        body: JSON.stringify(template),
+      };
+    }
+
+    return {
+      statusCode: 200,
+      headers: CORS_HEADERS,
+      body: JSON.stringify(templates),
+    };
+  } catch (error) {
+    console.error('Function error:', error);
+    return {
+      statusCode: 500,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      }),
+    };
+  }
 };

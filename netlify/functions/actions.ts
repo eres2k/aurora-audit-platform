@@ -1,21 +1,19 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
+import { getUser, requireAuth, canAccessSite, CORS_HEADERS } from './auth.js';
+import { randomUUID } from 'crypto';
 
 const ACTION_STORE = 'actions';
 
-const ensureToken = (event: HandlerEvent) => {
-  const token = event.headers.authorization?.replace('Bearer ', '');
-  if (!token) {
-    throw new Error('Unauthorized');
-  }
-};
-
 export const handler: Handler = async (event: HandlerEvent) => {
-  const { siteId, status, assigneeId } = event.queryStringParameters || {};
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: CORS_HEADERS, body: '' };
+  }
 
   try {
-    ensureToken(event);
-    const store = await getStore(ACTION_STORE);
+    const user = requireAuth(getUser(event));
+    const store = getStore(ACTION_STORE);
+    const { siteId, status, assigneeId } = event.queryStringParameters || {};
 
     switch (event.httpMethod) {
       case 'GET': {
@@ -33,7 +31,7 @@ export const handler: Handler = async (event: HandlerEvent) => {
           if (!actionRaw) continue;
           const data = JSON.parse(actionRaw);
 
-          if (siteId && data.siteId !== siteId) continue;
+          if (siteId && data.siteId !== siteId && !canAccessSite(user, data.siteId)) continue;
           if (status && data.status !== status) continue;
           if (assigneeId && data.assignee?.id !== assigneeId) continue;
 
@@ -42,37 +40,64 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
         return {
           statusCode: 200,
+          headers: CORS_HEADERS,
           body: JSON.stringify(actions)
         };
       }
 
       case 'POST': {
         const action = JSON.parse(event.body || '{}');
-        const actionId = `action-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+        if (!action.siteId || !canAccessSite(user, action.siteId)) {
+          return {
+            statusCode: 403,
+            headers: CORS_HEADERS,
+            body: JSON.stringify({ error: 'Access denied to site' }),
+          };
+        }
+
+        const actionId = randomUUID();
         const now = new Date().toISOString();
         const record = {
           ...action,
           actionId,
           createdAt: now,
-          updatedAt: now
+          updatedAt: now,
         };
 
-        await store.set(actionId, JSON.stringify(record));
+        const path = `${action.siteId}/${actionId}.json`;
+        await store.setJSON(path, record);
 
         return {
           statusCode: 200,
-          body: JSON.stringify(record)
+          headers: CORS_HEADERS,
+          body: JSON.stringify(record),
         };
       }
 
       default:
-        return { statusCode: 405, body: 'Method Not Allowed' };
+        return {
+          statusCode: 405,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({ error: 'Method Not Allowed' }),
+        };
     }
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
-      return { statusCode: 401, body: 'Unauthorized' };
+      return {
+        statusCode: 401,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
     }
     console.error('actions function error', error);
-    return { statusCode: 500, body: 'Internal Server Error' };
+    return {
+      statusCode: 500,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({
+        error: 'Internal Server Error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      }),
+    };
   }
 };

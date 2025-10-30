@@ -1,25 +1,54 @@
 import type { Handler, HandlerEvent } from '@netlify/functions';
 import { getStore } from '@netlify/blobs';
+import { getUser, requireAuth, canAccessSite, CORS_HEADERS } from './auth.js';
 
 export const handler: Handler = async (event: HandlerEvent) => {
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers: CORS_HEADERS, body: '' };
+  }
+
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+    return {
+      statusCode: 405,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({ error: 'Method Not Allowed' }),
+    };
   }
 
-  const { auditId } = JSON.parse(event.body || '{}');
-  if (!auditId) {
-    return { statusCode: 400, body: 'Audit ID required' };
-  }
+  try {
+    const user = requireAuth(getUser(event));
+    const { auditId } = JSON.parse(event.body || '{}');
+    if (!auditId) {
+      return {
+        statusCode: 400,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Audit ID required' }),
+      };
+    }
 
-  const store = getStore('audits');
-  const auditData = await store.get(auditId);
+    const store = getStore('audits');
+    // Assume auditId is site/year/month/auditId.json
+    const auditData = await store.get(auditId);
 
-  if (!auditData) {
-    return { statusCode: 404, body: 'Audit not found' };
-  }
+    if (!auditData) {
+      return {
+        statusCode: 404,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Audit not found' }),
+      };
+    }
 
-  const audit = JSON.parse(auditData);
-  const scorePercent = audit.score?.percent ?? 0;
+    const audit = JSON.parse(auditData as string);
+
+    if (!canAccessSite(user, audit.siteId)) {
+      return {
+        statusCode: 403,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({ error: 'Access denied' }),
+      };
+    }
+
+    const scorePercent = audit.score?.percent ?? 0;
 
   const html = `
     <!DOCTYPE html>
@@ -86,12 +115,24 @@ export const handler: Handler = async (event: HandlerEvent) => {
     </html>
   `;
 
-  return {
-    statusCode: 200,
-    headers: {
-      'Content-Type': 'text/html',
-      'Content-Disposition': `attachment; filename="audit-${auditId}.html"`
-    },
-    body: html
-  };
+    return {
+      statusCode: 200,
+      headers: {
+        ...CORS_HEADERS,
+        'Content-Type': 'text/html',
+        'Content-Disposition': `attachment; filename="audit-${auditId}.html"`,
+      },
+      body: html,
+    };
+  } catch (error) {
+    console.error('Export PDF error:', error);
+    return {
+      statusCode: 500,
+      headers: CORS_HEADERS,
+      body: JSON.stringify({
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      }),
+    };
+  }
 };
