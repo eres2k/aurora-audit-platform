@@ -1,9 +1,7 @@
 import type { Handler } from '@netlify/functions';
-import { getStore } from '@netlify/blobs';
+import { createClient } from '@supabase/supabase-js';
 import { getUser, requireAuth, canAccessSite, CORS_HEADERS } from './auth.js';
 import { randomUUID } from 'crypto';
-
-const ACTION_STORE = 'actions';
 
 export const handler: Handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -11,32 +9,29 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
     const user = requireAuth(getUser(context));
-    const store = getStore(ACTION_STORE);
     const { siteId, status, assigneeId } = event.queryStringParameters || {};
 
     switch (event.httpMethod) {
       case 'GET': {
-        const list = await store.list();
-        const entries = Array.isArray((list as any)?.blobs)
-          ? (list as any).blobs
-          : Array.isArray((list as any)?.keys)
-            ? (list as any).keys.map((key: string) => ({ key }))
-            : [];
-        const actions: unknown[] = [];
+        let query = supabase.from('actions').select('data');
 
-        for (const entry of entries) {
-          const key = typeof entry === 'string' ? entry : entry.key;
-          const actionRaw = await store.get(key);
-          if (!actionRaw) continue;
-          const data = JSON.parse(actionRaw);
-
-          if (siteId && data.siteId !== siteId && !canAccessSite(user, data.siteId)) continue;
-          if (status && data.status !== status) continue;
-          if (assigneeId && data.assignee?.id !== assigneeId) continue;
-
-          actions.push(data);
+        if (siteId) {
+          query = query.eq('site_id', siteId);
         }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const actions = (data || [])
+          .map((row: any) => row.data)
+          .filter((data: any) => {
+            if (siteId && data.siteId !== siteId && !canAccessSite(user, data.siteId)) return false;
+            if (status && data.status !== status) return false;
+            if (assigneeId && data.assignee?.id !== assigneeId) return false;
+            return true;
+          });
 
         return {
           statusCode: 200,
@@ -65,8 +60,13 @@ export const handler: Handler = async (event, context) => {
           updatedAt: now,
         };
 
-        const path = `${action.siteId}/${actionId}.json`;
-        await store.setJSON(path, record);
+        const { error } = await supabase.from('actions').insert({
+          action_id: actionId,
+          site_id: action.siteId,
+          data: record
+        });
+
+        if (error) throw error;
 
         return {
           statusCode: 200,

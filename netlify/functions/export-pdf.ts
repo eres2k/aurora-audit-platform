@@ -1,5 +1,5 @@
 import type { Handler } from '@netlify/functions';
-import { getStore } from '@netlify/blobs';
+import { createClient } from '@supabase/supabase-js';
 import { getUser, requireAuth, canAccessSite, CORS_HEADERS } from './auth.js';
 
 export const handler: Handler = async (event, context) => {
@@ -16,6 +16,7 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
     const user = requireAuth(getUser(context));
     const { auditId } = JSON.parse(event.body || '{}');
     if (!auditId) {
@@ -26,19 +27,24 @@ export const handler: Handler = async (event, context) => {
       };
     }
 
-    const store = getStore('audits');
-    // Assume auditId is site/year/month/auditId.json
-    const auditData = await store.get(auditId);
+    const { data, error } = await supabase
+      .from('audits')
+      .select('data')
+      .eq('audit_id', auditId)
+      .single();
 
-    if (!auditData) {
-      return {
-        statusCode: 404,
-        headers: CORS_HEADERS,
-        body: JSON.stringify({ error: 'Audit not found' }),
-      };
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return {
+          statusCode: 404,
+          headers: CORS_HEADERS,
+          body: JSON.stringify({ error: 'Audit not found' }),
+        };
+      }
+      throw error;
     }
 
-    const audit = JSON.parse(auditData as string);
+    const audit = data.data;
 
     if (!canAccessSite(user, audit.siteId)) {
       return {
