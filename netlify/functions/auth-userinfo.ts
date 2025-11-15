@@ -1,5 +1,5 @@
 import type { Handler } from '@netlify/functions';
-import { getUser, requireAuth, CORS_HEADERS } from './auth.js';
+import { getUser, requireAuth, CORS_HEADERS } from './auth';
 
 export const handler: Handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') {

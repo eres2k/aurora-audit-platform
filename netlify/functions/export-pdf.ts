@@ -1,6 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
-import { getUser, requireAuth, canAccessSite, CORS_HEADERS } from './auth.js';
+import { getUser, requireAuth, canAccessSite, CORS_HEADERS } from './auth';
 
 export const handler: Handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') {

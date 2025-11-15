@@ -1,5 +1,5 @@
 import type { Handler } from '@netlify/functions';
-import { CORS_HEADERS } from './auth.js';
+import { CORS_HEADERS } from './auth';
 
 const templates = [
   {

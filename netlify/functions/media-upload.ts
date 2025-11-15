@@ -1,6 +1,6 @@
 import type { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
-import { getUser, requireAuth, CORS_HEADERS } from './auth.js';
+import { getUser, requireAuth, CORS_HEADERS } from './auth';
 import { randomUUID } from 'crypto';
 
 export const handler: Handler = async (event, context) => {
