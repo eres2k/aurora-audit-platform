@@ -16,7 +16,7 @@ A simplified, mobile-first SafetyCulture-style app for Amazon Logistics (AMZL) w
 
 - **Frontend**: React + Vite + TypeScript, TailwindCSS, shadcn/ui
 - **PWA**: Service Worker + Web App Manifest, IndexedDB for offline
-- **Backend**: Netlify Functions (TypeScript), Netlify Blobs for storage
+- **Backend**: Netlify Functions (TypeScript), Supabase for storage
 - **Auth**: Netlify Identity with roles
 - **Deployment**: Netlify with EU region
 
@@ -37,9 +37,16 @@ A simplified, mobile-first SafetyCulture-style app for Amazon Logistics (AMZL) w
 1. Connect GitHub repo to Netlify
 2. Set build command: `npm run build`
 3. Set publish directory: `dist`
-4. Configure environment variables in Netlify dashboard
-5. Enable Netlify Identity and Blobs
+4. Configure environment variables in Netlify dashboard:
+   - `SUPABASE_URL` - Your Supabase project URL
+   - `SUPABASE_ANON_KEY` - Your Supabase anon/public key
+
+   These values can be found in your Supabase project settings under API.
+
+5. Enable Netlify Identity
 6. Deploy
+
+**Important**: After deployment, ensure the Supabase environment variables are set correctly in Netlify. The functions will return a 500 error if these are missing.
 
 ## Role Seeding
 
@@ -71,7 +78,19 @@ Use Netlify Identity admin panel to create users and assign roles via app_metada
 
 ## Data Model
 
-Audits stored in Netlify Blobs under `audits/{siteId}/{yyyy}/{mm}/{auditId}.json`
+Audits stored in Supabase database with the following schema:
+
+**audits table:**
+- `audit_id` (text, primary key) - Unique identifier for the audit
+- `site_id` (text) - Site identifier
+- `year` (integer) - Year of audit
+- `month` (integer) - Month of audit
+- `data` (jsonb) - Full audit data including items, score, signatures, etc.
+
+**audit_index table:**
+- `site_id` (text) - Site identifier
+- `year_month` (text) - Format: YYYY-MM
+- `audits` (jsonb) - Array of audit summaries for quick listing
 
 Templates hardcoded in functions for MVP.
 
