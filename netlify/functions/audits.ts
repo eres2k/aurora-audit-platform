@@ -8,7 +8,27 @@ export const handler: Handler = async (event, context) => {
   }
 
   try {
-    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+    // Validate required environment variables
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+      console.error('Missing Supabase environment variables', {
+        hasUrl: !!process.env.SUPABASE_URL,
+        hasKey: !!process.env.SUPABASE_ANON_KEY
+      });
+      return {
+        statusCode: 500,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          error: 'Server configuration error',
+          details: 'Missing required Supabase configuration. Please contact the administrator.',
+          missingVars: [
+            !process.env.SUPABASE_URL && 'SUPABASE_URL',
+            !process.env.SUPABASE_ANON_KEY && 'SUPABASE_ANON_KEY'
+          ].filter(Boolean)
+        })
+      };
+    }
+
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
     const user = requireAuth(getUser(context));
     const params = event.queryStringParameters || {};
 

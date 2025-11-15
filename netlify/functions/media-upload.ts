@@ -10,7 +10,21 @@ export const handler: Handler = async (event, context) => {
 
   try {
     requireAuth(getUser(context));
-    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+
+    // Validate required environment variables
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+      console.error('Missing Supabase environment variables');
+      return {
+        statusCode: 500,
+        headers: CORS_HEADERS,
+        body: JSON.stringify({
+          error: 'Server configuration error',
+          details: 'Missing required Supabase configuration'
+        })
+      };
+    }
+
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
     if (event.httpMethod === 'POST') {
       const { auditId } = JSON.parse(event.body || '{}');
