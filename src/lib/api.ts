@@ -5,15 +5,19 @@ const API_BASE = '/.netlify/functions';
 
 class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const token = auth.getToken();
+    const token = await auth.getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> | undefined)
+    };
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
 
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...options.headers
-      }
+      headers
     });
 
     if (!response.ok) {
@@ -102,12 +106,12 @@ class ApiClient {
   }
 
   async exportPdf(auditId: string): Promise<Blob> {
-    const token = auth.getToken();
+    const token = await auth.getToken();
     const response = await fetch(`${API_BASE}/export-pdf`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify({ auditId })
     });

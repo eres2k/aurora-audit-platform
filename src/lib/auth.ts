@@ -67,9 +67,22 @@ export const auth = {
 
   getCurrentUser,
 
-  getToken: () => {
+  getToken: async () => {
     const user = netlifyIdentity.currentUser();
-    return user?.token?.access_token;
+    if (!user) {
+      return null;
+    }
+
+    // Always ask Netlify Identity for a fresh JWT to avoid using expired tokens
+    if (typeof user.jwt === 'function') {
+      try {
+        return await user.jwt();
+      } catch (error) {
+        console.error('Failed to refresh Identity token', error);
+      }
+    }
+
+    return user.token?.access_token ?? null;
   },
 
   onAuthChange: (callback: AuthListener) => {
