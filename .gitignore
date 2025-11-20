@@ -1,21 +1,5 @@
 node_modules
 dist
-.env
-.vscode
 .DS_Store
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# IDEs and editors
-.idea/
-.vscode/
-
-# Coverage directory used by tools like istanbul
-coverage/
-
-# Build output
-/dist
-/build
+.env
+.env.local

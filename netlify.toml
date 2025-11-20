@@ -1,43 +1,8 @@
 [build]
   command = "npm run build"
-  functions = "netlify/functions"
   publish = "dist"
-
-[build.environment]
-  NODE_VERSION = "20"
-
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
-  included_files = ["netlify/functions/**"]
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Frame-Options = "DENY"
-    X-Content-Type-Options = "nosniff"
-    Referrer-Policy = "strict-origin-when-cross-origin"
-
-[[headers]]
-  for = "/.netlify/functions/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Headers = "Content-Type, Authorization"
-    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
-
-[context.production.environment]
-  REGION = "eu"
-  RETENTION_MONTHS = "24"
-  BLOBS_CONTEXT = "production"
-  SUPABASE_URL = "https://ferpfylqmnvdjuselpuu.supabase.co"
-  SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlcnBmeWxxbW52ZGp1c2VscHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5NDA3ODksImV4cCI6MjA3MDUxNjc4OX0.Yy4L4IUtoK9B_cQXRcqmznxUJ08QMDUG3I_ieK6SuUE"
