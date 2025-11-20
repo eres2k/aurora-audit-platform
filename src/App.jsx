@@ -17,8 +17,13 @@ import {
   Sparkles,
   Loader2,
   Bot,
-  X
+  X,
+  LogOut,
+  MapPin
 } from 'lucide-react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import LoginPage from './components/LoginPage';
+import StationSelector from './components/StationSelector';
 
 // --- GEMINI API SETUP ---
 // Nutzt Environment Variable für Sicherheit (Vite Standard)
@@ -339,9 +344,9 @@ const Dashboard = ({ audits, onStartAudit }) => {
 
 // --- AUDIT RECORDER ---
 const AuditRecorder = ({ template, onSave, onCancel }) => {
+  const { selectedStation } = useAuth();
   const [answers, setAnswers] = useState({});
   const [notes, setNotes] = useState({});
-  const [location, setLocation] = useState("Station D1");
   const [globalNotes, setGlobalNotes] = useState("");
 
   // AI State
@@ -405,7 +410,7 @@ const AuditRecorder = ({ template, onSave, onCancel }) => {
       answers,
       itemNotes: notes,
       score,
-      location,
+      location: selectedStation,
       notes: globalNotes,
       status: 'completed',
       date: new Date().toISOString()
@@ -442,14 +447,11 @@ const AuditRecorder = ({ template, onSave, onCancel }) => {
       <Card className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Standort / Area</label>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none"
-              placeholder="z.B. Inbound Dock"
-            />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Station</label>
+            <div className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-md">
+              <MapPin size={16} className="text-blue-600" />
+              <span className="font-semibold text-slate-900">{selectedStation}</span>
+            </div>
           </div>
            <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Auditor Notizen</label>
@@ -638,13 +640,33 @@ const TemplateManager = ({ templates, onUpdateTemplates }) => {
 };
 
 // --- MAIN APP SHELL ---
-export default function App() {
+function AppContent() {
+  const { user, selectedStation, logout, isAuthenticated, hasSelectedStation, loading } = useAuth();
   const [view, setView] = useState('dashboard'); // dashboard, audit, templates, reports
   const [activeTemplate, setActiveTemplate] = useState(null);
 
   // "Netlify Blobs" Simulation via LocalStorage
   const [templates, setTemplates] = useState([DEFAULT_TEMPLATE]);
   const [audits, setAudits] = useState([]);
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  // Show station selector if authenticated but no station selected
+  if (!hasSelectedStation) {
+    return <StationSelector />;
+  }
 
   useEffect(() => {
     const storedAudits = localStorage.getItem('safezone_audits');
@@ -710,16 +732,26 @@ export default function App() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-4 border-t border-slate-800 space-y-3">
           <div className="flex items-center gap-3 px-4 py-2">
             <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold">
-              AM
+              {user?.user_metadata?.full_name?.substring(0, 2).toUpperCase() || user?.email?.substring(0, 2).toUpperCase() || 'US'}
             </div>
-            <div className="text-sm">
-              <p className="text-white">Area Manager</p>
-              <p className="text-slate-500 text-xs">Station VIE1</p>
+            <div className="text-sm flex-1 min-w-0">
+              <p className="text-white truncate">{user?.user_metadata?.full_name || user?.email}</p>
+              <div className="flex items-center gap-1 text-slate-400 text-xs">
+                <MapPin size={12} />
+                <span>{selectedStation}</span>
+              </div>
             </div>
           </div>
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            <LogOut size={16} />
+            Logout
+          </button>
         </div>
       </aside>
 
@@ -803,5 +835,14 @@ export default function App() {
 
       </main>
     </div>
+  );
+}
+
+// Wrap AppContent with AuthProvider
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
