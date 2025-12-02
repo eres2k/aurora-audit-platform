@@ -3,13 +3,20 @@ import netlifyIdentity from 'netlify-identity-widget';
 
 const AuthContext = createContext(null);
 
+// Available stations for Amazon Logistics
+const STATIONS = [
+  { id: 'DVI1', name: 'DVI1', fullName: 'Distribution Center 1', color: 'bg-blue-500' },
+  { id: 'DVI2', name: 'DVI2', fullName: 'Distribution Center 2', color: 'bg-indigo-500' },
+  { id: 'DVI3', name: 'DVI3', fullName: 'Distribution Center 3', color: 'bg-purple-500' },
+  { id: 'DAP5', name: 'DAP5', fullName: 'Delivery Station 5', color: 'bg-green-500' },
+  { id: 'DAP8', name: 'DAP8', fullName: 'Delivery Station 8', color: 'bg-teal-500' },
+  { id: 'DXA1', name: 'DXA1', fullName: 'Express Station 1', color: 'bg-orange-500' },
+];
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [selectedStation, setSelectedStation] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Available stations
-  const STATIONS = ['DVI1', 'DVI2', 'DVI3', 'DAP5', 'DAP8'];
 
   useEffect(() => {
     // Initialize Netlify Identity
@@ -21,8 +28,11 @@ export const AuthProvider = ({ children }) => {
 
     // Load saved station from localStorage
     const savedStation = localStorage.getItem('selectedStation');
-    if (savedStation && STATIONS.includes(savedStation)) {
-      setSelectedStation(savedStation);
+    if (savedStation) {
+      const station = STATIONS.find(s => s.id === savedStation);
+      if (station) {
+        setSelectedStation(savedStation);
+      }
     }
 
     setLoading(false);
@@ -59,11 +69,16 @@ export const AuthProvider = ({ children }) => {
     netlifyIdentity.logout();
   };
 
-  const selectStation = (station) => {
-    if (STATIONS.includes(station)) {
-      setSelectedStation(station);
-      localStorage.setItem('selectedStation', station);
+  const selectStation = (stationId) => {
+    const station = STATIONS.find(s => s.id === stationId);
+    if (station) {
+      setSelectedStation(stationId);
+      localStorage.setItem('selectedStation', stationId);
     }
+  };
+
+  const getStationDetails = (stationId) => {
+    return STATIONS.find(s => s.id === stationId);
   };
 
   const value = {
@@ -75,6 +90,7 @@ export const AuthProvider = ({ children }) => {
     signup,
     logout,
     selectStation,
+    getStationDetails,
     isAuthenticated: !!user,
     hasSelectedStation: !!selectedStation,
   };
