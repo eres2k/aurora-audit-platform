@@ -21,6 +21,15 @@ export default function AuditCard({ audit, index = 0 }) {
   const navigate = useNavigate();
   const { templates } = useAudits();
 
+  const handleClick = () => {
+    if (audit.status === 'completed') {
+      navigate(`/audits/${audit.id}`);
+    } else {
+      // Draft or in_progress - continue the audit
+      navigate(`/audits/${audit.id}/continue`);
+    }
+  };
+
   const handleExportPDF = (e) => {
     e.stopPropagation();
     const template = templates.find(t => t.id === audit.templateId);
@@ -64,7 +73,7 @@ export default function AuditCard({ audit, index = 0 }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      onClick={() => navigate(`/audits/${audit.id}`)}
+      onClick={handleClick}
       className="card p-4 cursor-pointer hover:border-amazon-orange/50 transition-all group"
     >
       <div className="flex items-start gap-4">
