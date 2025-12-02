@@ -20,8 +20,9 @@ export default function NewAudit() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const templateIdFromUrl = searchParams.get('template');
+  const continueAuditId = searchParams.get('continue');
 
-  const { templates, createAudit, updateAudit, completeAudit } = useAudits();
+  const { audits, templates, createAudit, updateAudit, completeAudit } = useAudits();
   const { selectedStation, stations } = useAuth();
 
   const [step, setStep] = useState(templateIdFromUrl ? 'station' : 'select');
@@ -38,15 +39,35 @@ export default function NewAudit() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [finalScore, setFinalScore] = useState(null);
 
+  // Handle continuing an existing audit
   useEffect(() => {
-    if (templateIdFromUrl) {
+    if (continueAuditId && audits.length > 0) {
+      const existingAudit = audits.find(a => a.id === continueAuditId);
+      if (existingAudit && (existingAudit.status === 'draft' || existingAudit.status === 'in_progress')) {
+        const template = templates.find(t => t.id === existingAudit.templateId);
+        if (template) {
+          setAudit(existingAudit);
+          setSelectedTemplate(template);
+          setAuditStation(existingAudit.location || selectedStation || '');
+          setAnswers(existingAudit.answers || {});
+          setNotes(existingAudit.notes || {});
+          setGlobalNotes(existingAudit.globalNotes || '');
+          setStep('audit');
+        }
+      }
+    }
+  }, [continueAuditId, audits, templates, selectedStation]);
+
+  // Handle template from URL
+  useEffect(() => {
+    if (templateIdFromUrl && !continueAuditId) {
       const template = templates.find(t => t.id === templateIdFromUrl);
       if (template) {
         setSelectedTemplate(template);
         setStep('station');
       }
     }
-  }, [templateIdFromUrl, templates]);
+  }, [templateIdFromUrl, templates, continueAuditId]);
 
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
