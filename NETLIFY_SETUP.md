@@ -1,130 +1,111 @@
 # Netlify Environment Setup Guide
 
-## Critical: Required Environment Variables
+## Overview
 
-The Aurora Audit Platform requires the following environment variables to be set in your Netlify deployment. Without these, the application will fail with 500 errors when trying to complete audits or perform other operations.
+The Aurora Audit Platform uses **Netlify Blobs** for server-side data storage. This is a simple key-value store built into Netlify - no external database required!
 
-### Required Variables
+## How It Works
 
-Navigate to **Site settings > Environment variables** in your Netlify dashboard and add:
+- **Audits, Templates, and Actions** are stored server-side using Netlify Blobs
+- **Local storage (IndexedDB)** is used as a cache for offline support
+- Data syncs automatically when online
 
-| Variable Name | Description | Where to Find |
-|--------------|-------------|---------------|
-| `SUPABASE_URL` | Your Supabase project URL | Supabase Dashboard → Settings → API → Project URL |
-| `SUPABASE_SERVICE_KEY` | Your Supabase service role key (for backend) | Supabase Dashboard → Settings → API → Project API keys → `service_role` `secret` |
+## Storage Architecture
 
-### How to Add Environment Variables in Netlify
+```
+Frontend (React)
+    ↓
+Netlify Functions (API)
+    ↓
+Netlify Blobs (Server Storage)
 
-1. Go to your Netlify dashboard
-2. Select your site (auroraauditplatform)
-3. Navigate to **Site settings** → **Environment variables**
-4. Click **Add a variable**
-5. For each variable:
-   - Enter the **Key** (e.g., `SUPABASE_URL`)
-   - Enter the **Value** (copy from Supabase dashboard)
-   - Select which contexts to apply to (Production, Deploy previews, Branch deploys)
-6. Click **Create variable**
-7. After adding all variables, trigger a new deployment
-
-### Verifying the Setup
-
-After setting the environment variables and deploying:
-
-1. Open your browser's developer console (F12)
-2. Try to complete an audit
-3. If you see a 500 error with message "Missing required Supabase configuration", the environment variables are not set correctly
-4. Check the Netlify function logs for detailed error messages
-
-### Common Issues
-
-**Issue**: Functions return 500 error with "Server configuration error"
-- **Cause**: Environment variables not set in Netlify
-- **Solution**: Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` as described above
-
-**Issue**: Functions work locally but fail in production
-- **Cause**: `.env.local` file is only used for local development
-- **Solution**: Set the environment variables in Netlify dashboard (without the `REACT_APP_` prefix)
-
-**Issue**: Variables set but still getting errors
-- **Cause**: Deployment hasn't picked up the new environment variables
-- **Solution**: Trigger a new deployment after adding variables
-
-### Supabase Database Schema
-
-Ensure your Supabase database has the following tables:
-
-#### audits table
-```sql
-CREATE TABLE audits (
-  audit_id TEXT PRIMARY KEY,
-  site_id TEXT NOT NULL,
-  year INTEGER NOT NULL,
-  month INTEGER NOT NULL,
-  data JSONB NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX idx_audits_site_id ON audits(site_id);
-CREATE INDEX idx_audits_year_month ON audits(year, month);
++ LocalForage (IndexedDB) for offline cache
 ```
 
-#### audit_index table
-```sql
-CREATE TABLE audit_index (
-  site_id TEXT NOT NULL,
-  year_month TEXT NOT NULL,
-  audits JSONB NOT NULL DEFAULT '[]'::jsonb,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  PRIMARY KEY (site_id, year_month)
-);
+## Netlify Blobs Stores
+
+The application uses three blob stores:
+
+| Store Name | Description |
+|------------|-------------|
+| `audits` | Completed and draft audits |
+| `templates` | Custom audit templates |
+| `actions` | Corrective actions from failed audit items |
+
+## Setup Requirements
+
+### 1. Netlify Identity
+
+Netlify Identity is used for user authentication. Enable it in your Netlify dashboard:
+
+1. Go to **Site settings** → **Identity**
+2. Click **Enable Identity**
+3. Configure registration preferences (open/invite-only)
+4. Optionally configure external providers (Google, GitHub, etc.)
+
+### 2. Netlify Blobs
+
+Netlify Blobs is automatically available on all Netlify sites. No additional configuration required!
+
+The blob stores are created automatically when the functions first write data.
+
+## API Endpoints
+
+The following Netlify Functions handle data operations:
+
+| Endpoint | Methods | Description |
+|----------|---------|-------------|
+| `/.netlify/functions/audits` | GET, POST, PUT, DELETE | Audit CRUD operations |
+| `/.netlify/functions/templates` | GET, POST, PUT, DELETE | Template CRUD operations |
+| `/.netlify/functions/actions` | GET, POST, PUT, DELETE | Action CRUD operations |
+| `/.netlify/functions/stations` | GET | Get user's assigned stations |
+| `/.netlify/functions/user-info` | GET | Get authenticated user info |
+
+All endpoints require authentication via Netlify Identity.
+
+## Local Development
+
+For local development with Netlify CLI:
+
+```bash
+# Install Netlify CLI
+npm install -g netlify-cli
+
+# Link to your site
+netlify link
+
+# Run local development server
+netlify dev
 ```
 
-#### actions table
-```sql
-CREATE TABLE actions (
-  action_id TEXT PRIMARY KEY,
-  site_id TEXT NOT NULL,
-  data JSONB NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+This will run the functions locally with access to Netlify Blobs.
 
-CREATE INDEX idx_actions_site_id ON actions(site_id);
+## Troubleshooting
+
+### Issue: 401 Unauthorized errors
+- **Cause**: User not logged in or token expired
+- **Solution**: Ensure user is authenticated via Netlify Identity
+
+### Issue: Data not persisting
+- **Cause**: Blobs store not accessible
+- **Solution**: Make sure you're running via `netlify dev` locally, or deployed to Netlify
+
+### Issue: Offline changes not syncing
+- **Cause**: Network issues or sync error
+- **Solution**: Check browser console for errors, try manual refresh
+
+## Data Backup
+
+To export data from Netlify Blobs, you can use the Netlify CLI:
+
+```bash
+# List all blobs in a store
+netlify blobs:list audits
+
+# Get a specific blob
+netlify blobs:get audits <key>
 ```
 
-#### templates table
-```sql
-CREATE TABLE templates (
-  template_id TEXT PRIMARY KEY,
-  data JSONB NOT NULL,
-  created_by TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE
-);
+## Migration from Local Storage
 
-CREATE INDEX idx_templates_created_by ON templates(created_by);
-```
-
-### Media Storage Setup
-
-The application uses Supabase Storage for media uploads. Create a bucket named `media`:
-
-1. Go to Supabase Dashboard → Storage
-2. Create a new bucket named `media`
-3. Set the bucket to **Public** if you want direct access to images
-4. Configure appropriate RLS policies if needed
-
-### Environment Variables Reference
-
-For reference, the local development uses these variables (in `.env.local`):
-- `VITE_SUPABASE_URL` - Frontend (Vite bundler)
-- `VITE_SUPABASE_ANON_KEY` - Frontend (Vite bundler)
-- `REACT_APP_SUPABASE_URL` - Frontend (legacy support)
-- `REACT_APP_SUPABASE_ANON_KEY` - Frontend (legacy support)
-
-The Netlify Functions use these variables (must be set in Netlify dashboard):
-- `SUPABASE_URL` - Backend functions
-- `SUPABASE_SERVICE_KEY` - Backend functions (service role key for full access)
-
-Note the different naming convention: Frontend uses `VITE_` prefix (for Vite bundler), backend uses plain names.
-
-**Important**: The backend uses `SUPABASE_SERVICE_KEY` (service role) instead of the anon key to bypass Row Level Security (RLS) policies.
+If you have existing data in local storage (from before server-side storage), the app will automatically sync it to the server when you go online.

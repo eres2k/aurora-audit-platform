@@ -1,16 +1,5 @@
-// Netlify Function for actions CRUD operations
-const { createClient } = require('@supabase/supabase-js');
-
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-
-const getSupabase = () => {
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Supabase configuration missing');
-  }
-  return createClient(supabaseUrl, supabaseServiceKey);
-};
+// Netlify Function for actions CRUD operations using Netlify Blobs
+const { getStore } = require('@netlify/blobs');
 
 // CORS headers
 const headers = {
@@ -38,7 +27,7 @@ exports.handler = async (event, context) => {
     };
   }
 
-  const supabase = getSupabase();
+  const store = getStore('actions');
   const method = event.httpMethod;
   const params = event.queryStringParameters || {};
 
@@ -47,36 +36,30 @@ exports.handler = async (event, context) => {
       case 'GET': {
         // Get single action by ID
         if (params.id) {
-          const { data, error } = await supabase
-            .from('actions')
-            .select('*')
-            .eq('action_id', params.id)
-            .single();
-
-          if (error && error.code !== 'PGRST116') throw error;
+          const action = await store.get(params.id, { type: 'json' });
           return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ action: data?.data || null }),
+            body: JSON.stringify({ action }),
           };
         }
 
-        // Get all actions, optionally filtered by station
-        let query = supabase.from('actions').select('*');
+        // Get all actions
+        const { blobs } = await store.list();
+        const actions = [];
 
-        if (params.station) {
-          query = query.eq('site_id', params.station);
+        for (const blob of blobs) {
+          const action = await store.get(blob.key, { type: 'json' });
+          if (action) {
+            // Filter by station if specified
+            if (!params.station || action.location === params.station) {
+              actions.push(action);
+            }
+          }
         }
 
-        // Order by created_at descending
-        query = query.order('created_at', { ascending: false });
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        // Extract action data from JSONB
-        const actions = (data || []).map(row => row.data || row);
+        // Sort by createdAt descending
+        actions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         return {
           statusCode: 200,
@@ -90,49 +73,26 @@ exports.handler = async (event, context) => {
 
         // Handle bulk insert
         if (body.bulk && Array.isArray(body.actions)) {
-          const records = body.actions.map(action => ({
-            action_id: action.id,
-            site_id: action.location,
-            data: action,
-            created_at: new Date().toISOString(),
-          }));
-
-          const { data, error } = await supabase
-            .from('actions')
-            .upsert(records, { onConflict: 'action_id' })
-            .select();
-
-          if (error) throw error;
-
-          const actions = (data || []).map(row => row.data);
+          const savedActions = [];
+          for (const action of body.actions) {
+            await store.setJSON(action.id, action);
+            savedActions.push(action);
+          }
           return {
             statusCode: 201,
             headers,
-            body: JSON.stringify({ actions, success: true }),
+            body: JSON.stringify({ actions: savedActions, success: true }),
           };
         }
 
         // Single action insert
         const action = body;
-        const record = {
-          action_id: action.id,
-          site_id: action.location,
-          data: action,
-          created_at: new Date().toISOString(),
-        };
-
-        const { data, error } = await supabase
-          .from('actions')
-          .upsert(record, { onConflict: 'action_id' })
-          .select()
-          .single();
-
-        if (error) throw error;
+        await store.setJSON(action.id, action);
 
         return {
           statusCode: 201,
           headers,
-          body: JSON.stringify({ action: data?.data || action, success: true }),
+          body: JSON.stringify({ action, success: true }),
         };
       }
 
@@ -148,39 +108,18 @@ exports.handler = async (event, context) => {
           };
         }
 
-        // First get the existing action
-        const { data: existing, error: fetchError } = await supabase
-          .from('actions')
-          .select('*')
-          .eq('action_id', id)
-          .single();
-
-        if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
-
-        // Merge updates with existing data
+        // Get existing action and merge updates
+        const existing = await store.get(id, { type: 'json' });
         const updatedAction = existing
-          ? { ...existing.data, ...updates }
+          ? { ...existing, ...updates }
           : { id, ...updates };
 
-        const record = {
-          action_id: id,
-          site_id: updatedAction.location,
-          data: updatedAction,
-          created_at: existing?.created_at || new Date().toISOString(),
-        };
-
-        const { data, error } = await supabase
-          .from('actions')
-          .upsert(record, { onConflict: 'action_id' })
-          .select()
-          .single();
-
-        if (error) throw error;
+        await store.setJSON(id, updatedAction);
 
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ action: data?.data || updatedAction, success: true }),
+          body: JSON.stringify({ action: updatedAction, success: true }),
         };
       }
 
@@ -196,12 +135,7 @@ exports.handler = async (event, context) => {
           };
         }
 
-        const { error } = await supabase
-          .from('actions')
-          .delete()
-          .eq('action_id', id);
-
-        if (error) throw error;
+        await store.delete(id);
 
         return {
           statusCode: 200,

@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.39.0",
+    "@netlify/blobs": "^8.1.0",
     "date-fns": "^2.30.0",
     "framer-motion": "^10.16.5",
     "jspdf": "^3.0.4",

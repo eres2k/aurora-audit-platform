@@ -1,16 +1,5 @@
-// Netlify Function for audits CRUD operations
-const { createClient } = require('@supabase/supabase-js');
-
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-
-const getSupabase = () => {
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Supabase configuration missing');
-  }
-  return createClient(supabaseUrl, supabaseServiceKey);
-};
+// Netlify Function for audits CRUD operations using Netlify Blobs
+const { getStore } = require('@netlify/blobs');
 
 // CORS headers
 const headers = {
@@ -38,7 +27,7 @@ exports.handler = async (event, context) => {
     };
   }
 
-  const supabase = getSupabase();
+  const store = getStore('audits');
   const method = event.httpMethod;
   const params = event.queryStringParameters || {};
 
@@ -47,36 +36,30 @@ exports.handler = async (event, context) => {
       case 'GET': {
         // Get single audit by ID
         if (params.id) {
-          const { data, error } = await supabase
-            .from('audits')
-            .select('*')
-            .eq('audit_id', params.id)
-            .single();
-
-          if (error) throw error;
+          const audit = await store.get(params.id, { type: 'json' });
           return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ audit: data?.data || data }),
+            body: JSON.stringify({ audit }),
           };
         }
 
-        // Get all audits, optionally filtered by station
-        let query = supabase.from('audits').select('*');
+        // Get all audits
+        const { blobs } = await store.list();
+        const audits = [];
 
-        if (params.station) {
-          query = query.eq('site_id', params.station);
+        for (const blob of blobs) {
+          const audit = await store.get(blob.key, { type: 'json' });
+          if (audit) {
+            // Filter by station if specified
+            if (!params.station || audit.location === params.station) {
+              audits.push(audit);
+            }
+          }
         }
 
-        // Order by created_at descending
-        query = query.order('created_at', { ascending: false });
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        // Extract audit data from JSONB
-        const audits = (data || []).map(row => row.data || row);
+        // Sort by date descending
+        audits.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         return {
           statusCode: 200,
@@ -86,32 +69,13 @@ exports.handler = async (event, context) => {
       }
 
       case 'POST': {
-        const body = JSON.parse(event.body);
-        const audit = body;
-
-        // Prepare the record for Supabase
-        const date = new Date(audit.date);
-        const record = {
-          audit_id: audit.id,
-          site_id: audit.location,
-          year: date.getFullYear(),
-          month: date.getMonth() + 1,
-          data: audit,
-          created_at: new Date().toISOString(),
-        };
-
-        const { data, error } = await supabase
-          .from('audits')
-          .upsert(record, { onConflict: 'audit_id' })
-          .select()
-          .single();
-
-        if (error) throw error;
+        const audit = JSON.parse(event.body);
+        await store.setJSON(audit.id, audit);
 
         return {
           statusCode: 201,
           headers,
-          body: JSON.stringify({ audit: data?.data || audit, success: true }),
+          body: JSON.stringify({ audit, success: true }),
         };
       }
 
@@ -127,42 +91,16 @@ exports.handler = async (event, context) => {
           };
         }
 
-        // First get the existing audit
-        const { data: existing, error: fetchError } = await supabase
-          .from('audits')
-          .select('*')
-          .eq('audit_id', id)
-          .single();
+        // Get existing audit and merge updates
+        const existing = await store.get(id, { type: 'json' });
+        const updatedAudit = existing ? { ...existing, ...updates } : { id, ...updates };
 
-        if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
-
-        // Merge updates with existing data
-        const updatedAudit = existing
-          ? { ...existing.data, ...updates }
-          : { id, ...updates };
-
-        const date = new Date(updatedAudit.date || new Date());
-        const record = {
-          audit_id: id,
-          site_id: updatedAudit.location,
-          year: date.getFullYear(),
-          month: date.getMonth() + 1,
-          data: updatedAudit,
-          created_at: existing?.created_at || new Date().toISOString(),
-        };
-
-        const { data, error } = await supabase
-          .from('audits')
-          .upsert(record, { onConflict: 'audit_id' })
-          .select()
-          .single();
-
-        if (error) throw error;
+        await store.setJSON(id, updatedAudit);
 
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ audit: data?.data || updatedAudit, success: true }),
+          body: JSON.stringify({ audit: updatedAudit, success: true }),
         };
       }
 
@@ -178,12 +116,7 @@ exports.handler = async (event, context) => {
           };
         }
 
-        const { error } = await supabase
-          .from('audits')
-          .delete()
-          .eq('audit_id', id);
-
-        if (error) throw error;
+        await store.delete(id);
 
         return {
           statusCode: 200,

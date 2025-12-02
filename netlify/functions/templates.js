@@ -1,16 +1,5 @@
-// Netlify Function for templates CRUD operations
-const { createClient } = require('@supabase/supabase-js');
-
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
-
-const getSupabase = () => {
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Supabase configuration missing');
-  }
-  return createClient(supabaseUrl, supabaseServiceKey);
-};
+// Netlify Function for templates CRUD operations using Netlify Blobs
+const { getStore } = require('@netlify/blobs');
 
 // CORS headers
 const headers = {
@@ -38,7 +27,7 @@ exports.handler = async (event, context) => {
     };
   }
 
-  const supabase = getSupabase();
+  const store = getStore('templates');
   const method = event.httpMethod;
   const params = event.queryStringParameters || {};
 
@@ -47,30 +36,27 @@ exports.handler = async (event, context) => {
       case 'GET': {
         // Get single template by ID
         if (params.id) {
-          const { data, error } = await supabase
-            .from('templates')
-            .select('*')
-            .eq('template_id', params.id)
-            .single();
-
-          if (error && error.code !== 'PGRST116') throw error;
+          const template = await store.get(params.id, { type: 'json' });
           return {
             statusCode: 200,
             headers,
-            body: JSON.stringify({ template: data?.data || null }),
+            body: JSON.stringify({ template }),
           };
         }
 
         // Get all templates
-        const { data, error } = await supabase
-          .from('templates')
-          .select('*')
-          .order('created_at', { ascending: false });
+        const { blobs } = await store.list();
+        const templates = [];
 
-        if (error) throw error;
+        for (const blob of blobs) {
+          const template = await store.get(blob.key, { type: 'json' });
+          if (template) {
+            templates.push(template);
+          }
+        }
 
-        // Extract template data from JSONB
-        const templates = (data || []).map(row => row.data || row);
+        // Sort by createdAt descending
+        templates.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
         return {
           statusCode: 200,
@@ -80,29 +66,16 @@ exports.handler = async (event, context) => {
       }
 
       case 'POST': {
-        const body = JSON.parse(event.body);
-        const template = body;
+        const template = JSON.parse(event.body);
+        template.createdAt = template.createdAt || new Date().toISOString();
+        template.createdBy = template.createdBy || user.email;
 
-        // Prepare the record for Supabase
-        const record = {
-          template_id: template.id,
-          data: template,
-          created_by: user.email,
-          created_at: new Date().toISOString(),
-        };
-
-        const { data, error } = await supabase
-          .from('templates')
-          .upsert(record, { onConflict: 'template_id' })
-          .select()
-          .single();
-
-        if (error) throw error;
+        await store.setJSON(template.id, template);
 
         return {
           statusCode: 201,
           headers,
-          body: JSON.stringify({ template: data?.data || template, success: true }),
+          body: JSON.stringify({ template, success: true }),
         };
       }
 
@@ -118,40 +91,18 @@ exports.handler = async (event, context) => {
           };
         }
 
-        // First get the existing template
-        const { data: existing, error: fetchError } = await supabase
-          .from('templates')
-          .select('*')
-          .eq('template_id', id)
-          .single();
-
-        if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
-
-        // Merge updates with existing data
+        // Get existing template and merge updates
+        const existing = await store.get(id, { type: 'json' });
         const updatedTemplate = existing
-          ? { ...existing.data, ...updates }
-          : { id, ...updates };
+          ? { ...existing, ...updates, updatedAt: new Date().toISOString() }
+          : { id, ...updates, updatedAt: new Date().toISOString() };
 
-        const record = {
-          template_id: id,
-          data: updatedTemplate,
-          created_by: existing?.created_by || user.email,
-          created_at: existing?.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        const { data, error } = await supabase
-          .from('templates')
-          .upsert(record, { onConflict: 'template_id' })
-          .select()
-          .single();
-
-        if (error) throw error;
+        await store.setJSON(id, updatedTemplate);
 
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ template: data?.data || updatedTemplate, success: true }),
+          body: JSON.stringify({ template: updatedTemplate, success: true }),
         };
       }
 
@@ -167,12 +118,7 @@ exports.handler = async (event, context) => {
           };
         }
 
-        const { error } = await supabase
-          .from('templates')
-          .delete()
-          .eq('template_id', id);
-
-        if (error) throw error;
+        await store.delete(id);
 
         return {
           statusCode: 200,
