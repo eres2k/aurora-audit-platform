@@ -1,11 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import localforage from 'localforage';
 import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from './AuthContext';
+import { auditsApi, templatesApi, actionsApi } from '../utils/api';
 
 const AuditContext = createContext();
 
-// Initialize localforage stores
+// Initialize localforage stores (for offline cache)
 const auditsStore = localforage.createInstance({ name: 'audits' });
 const templatesStore = localforage.createInstance({ name: 'templates' });
 const actionsStore = localforage.createInstance({ name: 'actions' });
@@ -20,6 +21,7 @@ const DEFAULT_TEMPLATES = [
     icon: 'truck',
     color: '#FF9900',
     estimatedTime: 15,
+    isDefault: true,
     sections: [
       {
         id: 'sec-exterior',
@@ -60,6 +62,7 @@ const DEFAULT_TEMPLATES = [
     icon: 'warehouse',
     color: '#007185',
     estimatedTime: 45,
+    isDefault: true,
     sections: [
       {
         id: 'sec-general',
@@ -100,6 +103,7 @@ const DEFAULT_TEMPLATES = [
     icon: 'package',
     color: '#067D62',
     estimatedTime: 10,
+    isDefault: true,
     sections: [
       {
         id: 'sec-package',
@@ -130,6 +134,7 @@ const DEFAULT_TEMPLATES = [
     icon: 'sparkles',
     color: '#6366F1',
     estimatedTime: 20,
+    isDefault: true,
     sections: [
       {
         id: 'sec-sort',
@@ -181,14 +186,100 @@ export function AuditProvider({ children }) {
   const [templates, setTemplates] = useState([]);
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, synced, error
 
-  // Load data on mount
+  // Monitor online status
   useEffect(() => {
-    loadData();
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Load data on mount or user change
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
   }, [user]);
 
+  // Sync when coming back online
+  useEffect(() => {
+    if (isOnline && user) {
+      syncWithServer();
+    }
+  }, [isOnline, user]);
+
+  // Load data from server (primary) and local storage (fallback/cache)
   const loadData = async () => {
     setLoading(true);
+    setSyncStatus('syncing');
+
+    try {
+      // Try to load from server first
+      if (isOnline && user) {
+        await loadFromServer();
+        setSyncStatus('synced');
+      } else {
+        // Fallback to local storage when offline
+        await loadFromLocalStorage();
+        setSyncStatus('idle');
+      }
+    } catch (error) {
+      console.error('Error loading data from server, falling back to local:', error);
+      // Fallback to local storage on server error
+      await loadFromLocalStorage();
+      setSyncStatus('error');
+    }
+
+    setLoading(false);
+  };
+
+  // Load data from server
+  const loadFromServer = async () => {
+    try {
+      // Load audits from server
+      const auditsResponse = await auditsApi.getAll();
+      const serverAudits = auditsResponse.audits || [];
+      setAudits(serverAudits);
+      await auditsStore.setItem('audits', serverAudits);
+
+      // Load custom templates from server
+      const templatesResponse = await templatesApi.getAll();
+      const serverTemplates = templatesResponse.templates || [];
+
+      // Merge with default templates
+      const mergedTemplates = [...DEFAULT_TEMPLATES];
+      serverTemplates.forEach(t => {
+        if (!mergedTemplates.find(dt => dt.id === t.id)) {
+          mergedTemplates.push(t);
+        }
+      });
+      setTemplates(mergedTemplates);
+      await templatesStore.setItem('templates', serverTemplates);
+
+      // Load actions from server
+      const actionsResponse = await actionsApi.getAll();
+      const serverActions = actionsResponse.actions || [];
+      setActions(serverActions);
+      await actionsStore.setItem('actions', serverActions);
+
+      console.log('Data loaded from server successfully');
+    } catch (error) {
+      console.error('Error loading from server:', error);
+      throw error;
+    }
+  };
+
+  // Load data from local storage
+  const loadFromLocalStorage = async () => {
     try {
       // Load audits
       const savedAudits = await auditsStore.getItem('audits') || [];
@@ -207,25 +298,88 @@ export function AuditProvider({ children }) {
       // Load actions
       const savedActions = await actionsStore.getItem('actions') || [];
       setActions(savedActions);
+
+      console.log('Data loaded from local storage');
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error loading from local storage:', error);
     }
-    setLoading(false);
   };
 
+  // Sync local data with server
+  const syncWithServer = async () => {
+    if (!isOnline || !user) return;
+
+    setSyncStatus('syncing');
+    try {
+      // Get local data
+      const localAudits = await auditsStore.getItem('audits') || [];
+      const localTemplates = await templatesStore.getItem('templates') || [];
+      const localActions = await actionsStore.getItem('actions') || [];
+
+      // Sync audits to server
+      for (const audit of localAudits) {
+        try {
+          await auditsApi.update(audit.id, audit);
+        } catch (error) {
+          console.error('Error syncing audit:', audit.id, error);
+        }
+      }
+
+      // Sync custom templates to server
+      for (const template of localTemplates) {
+        if (!template.isDefault) {
+          try {
+            await templatesApi.update(template.id, template);
+          } catch (error) {
+            console.error('Error syncing template:', template.id, error);
+          }
+        }
+      }
+
+      // Sync actions to server
+      for (const action of localActions) {
+        try {
+          await actionsApi.update(action.id, action);
+        } catch (error) {
+          console.error('Error syncing action:', action.id, error);
+        }
+      }
+
+      // Reload from server to get merged data
+      await loadFromServer();
+      setSyncStatus('synced');
+    } catch (error) {
+      console.error('Error syncing with server:', error);
+      setSyncStatus('error');
+    }
+  };
+
+  // Save audits to both local storage and server
   const saveAudits = async (newAudits) => {
-    await auditsStore.setItem('audits', newAudits);
+    // Update local state immediately
     setAudits(newAudits);
+
+    // Save to local storage (always, for offline support)
+    await auditsStore.setItem('audits', newAudits);
   };
 
+  // Save templates to both local storage and server
   const saveTemplates = async (newTemplates) => {
-    await templatesStore.setItem('templates', newTemplates);
+    // Update local state immediately
     setTemplates(newTemplates);
+
+    // Save custom templates to local storage (exclude defaults)
+    const customTemplates = newTemplates.filter(t => !t.isDefault);
+    await templatesStore.setItem('templates', customTemplates);
   };
 
+  // Save actions to both local storage and server
   const saveActions = async (newActions) => {
-    await actionsStore.setItem('actions', newActions);
+    // Update local state immediately
     setActions(newActions);
+
+    // Save to local storage
+    await actionsStore.setItem('actions', newActions);
   };
 
   // Create new audit
@@ -251,6 +405,16 @@ export function AuditProvider({ children }) {
 
     const updated = [...audits, newAudit];
     await saveAudits(updated);
+
+    // Sync to server if online
+    if (isOnline && user) {
+      try {
+        await auditsApi.create(newAudit);
+      } catch (error) {
+        console.error('Error saving audit to server:', error);
+      }
+    }
+
     return newAudit;
   };
 
@@ -260,6 +424,15 @@ export function AuditProvider({ children }) {
       a.id === auditId ? { ...a, ...updates } : a
     );
     await saveAudits(updated);
+
+    // Sync to server if online
+    if (isOnline && user) {
+      try {
+        await auditsApi.update(auditId, updates);
+      } catch (error) {
+        console.error('Error updating audit on server:', error);
+      }
+    }
   };
 
   // Complete audit
@@ -270,16 +443,16 @@ export function AuditProvider({ children }) {
     const template = templates.find(t => t.id === audit.templateId);
     const score = calculateScore(template, finalData.answers);
 
+    const completedAudit = {
+      ...audit,
+      ...finalData,
+      status: 'completed',
+      score,
+      completedAt: new Date().toISOString(),
+    };
+
     const updated = audits.map(a =>
-      a.id === auditId
-        ? {
-            ...a,
-            ...finalData,
-            status: 'completed',
-            score,
-            completedAt: new Date().toISOString(),
-          }
-        : a
+      a.id === auditId ? completedAudit : a
     );
     await saveAudits(updated);
 
@@ -308,7 +481,26 @@ export function AuditProvider({ children }) {
     }
 
     if (newActions.length > 0) {
-      await saveActions([...actions, ...newActions]);
+      const updatedActions = [...actions, ...newActions];
+      await saveActions(updatedActions);
+
+      // Sync new actions to server
+      if (isOnline && user) {
+        try {
+          await actionsApi.createBulk(newActions);
+        } catch (error) {
+          console.error('Error saving actions to server:', error);
+        }
+      }
+    }
+
+    // Sync completed audit to server
+    if (isOnline && user) {
+      try {
+        await auditsApi.update(auditId, completedAudit);
+      } catch (error) {
+        console.error('Error completing audit on server:', error);
+      }
     }
 
     return score;
@@ -318,6 +510,15 @@ export function AuditProvider({ children }) {
   const deleteAudit = async (auditId) => {
     const updated = audits.filter(a => a.id !== auditId);
     await saveAudits(updated);
+
+    // Sync to server if online
+    if (isOnline && user) {
+      try {
+        await auditsApi.delete(auditId);
+      } catch (error) {
+        console.error('Error deleting audit from server:', error);
+      }
+    }
   };
 
   // Calculate score
@@ -346,10 +547,25 @@ export function AuditProvider({ children }) {
 
   // Update action
   const updateAction = async (actionId, updates) => {
+    const updatedAction = {
+      ...actions.find(a => a.id === actionId),
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
     const updated = actions.map(a =>
-      a.id === actionId ? { ...a, ...updates, updatedAt: new Date().toISOString() } : a
+      a.id === actionId ? updatedAction : a
     );
     await saveActions(updated);
+
+    // Sync to server if online
+    if (isOnline && user) {
+      try {
+        await actionsApi.update(actionId, updatedAction);
+      } catch (error) {
+        console.error('Error updating action on server:', error);
+      }
+    }
   };
 
   // Create template
@@ -357,10 +573,23 @@ export function AuditProvider({ children }) {
     const newTemplate = {
       id: `tpl-${uuidv4()}`,
       ...templateData,
+      isDefault: false,
       createdAt: new Date().toISOString(),
       createdBy: user?.email || 'Anonymous',
     };
-    await saveTemplates([...templates, newTemplate]);
+
+    const updated = [...templates, newTemplate];
+    await saveTemplates(updated);
+
+    // Sync to server if online
+    if (isOnline && user) {
+      try {
+        await templatesApi.create(newTemplate);
+      } catch (error) {
+        console.error('Error saving template to server:', error);
+      }
+    }
+
     return newTemplate;
   };
 
@@ -370,16 +599,37 @@ export function AuditProvider({ children }) {
       t.id === templateId ? { ...t, ...updates } : t
     );
     await saveTemplates(updated);
+
+    // Sync to server if online (only for custom templates)
+    const template = templates.find(t => t.id === templateId);
+    if (isOnline && user && !template?.isDefault) {
+      try {
+        await templatesApi.update(templateId, updates);
+      } catch (error) {
+        console.error('Error updating template on server:', error);
+      }
+    }
   };
 
   // Delete template
   const deleteTemplate = async (templateId) => {
     // Don't delete default templates
-    if (DEFAULT_TEMPLATES.find(t => t.id === templateId)) {
+    const template = templates.find(t => t.id === templateId);
+    if (template?.isDefault || DEFAULT_TEMPLATES.find(t => t.id === templateId)) {
       throw new Error('Cannot delete default templates');
     }
+
     const updated = templates.filter(t => t.id !== templateId);
     await saveTemplates(updated);
+
+    // Sync to server if online
+    if (isOnline && user) {
+      try {
+        await templatesApi.delete(templateId);
+      } catch (error) {
+        console.error('Error deleting template from server:', error);
+      }
+    }
   };
 
   return (
@@ -388,6 +638,8 @@ export function AuditProvider({ children }) {
       templates,
       actions,
       loading,
+      isOnline,
+      syncStatus,
       createAudit,
       updateAudit,
       completeAudit,
@@ -398,6 +650,7 @@ export function AuditProvider({ children }) {
       updateAction,
       calculateScore,
       loadData,
+      syncWithServer,
     }}>
       {children}
     </AuditContext.Provider>
