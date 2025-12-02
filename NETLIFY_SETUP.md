@@ -11,7 +11,7 @@ Navigate to **Site settings > Environment variables** in your Netlify dashboard 
 | Variable Name | Description | Where to Find |
 |--------------|-------------|---------------|
 | `SUPABASE_URL` | Your Supabase project URL | Supabase Dashboard → Settings → API → Project URL |
-| `SUPABASE_ANON_KEY` | Your Supabase anonymous/public key | Supabase Dashboard → Settings → API → Project API keys → `anon` `public` |
+| `SUPABASE_SERVICE_KEY` | Your Supabase service role key (for backend) | Supabase Dashboard → Settings → API → Project API keys → `service_role` `secret` |
 
 ### How to Add Environment Variables in Netlify
 
@@ -91,6 +91,19 @@ CREATE TABLE actions (
 CREATE INDEX idx_actions_site_id ON actions(site_id);
 ```
 
+#### templates table
+```sql
+CREATE TABLE templates (
+  template_id TEXT PRIMARY KEY,
+  data JSONB NOT NULL,
+  created_by TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX idx_templates_created_by ON templates(created_by);
+```
+
 ### Media Storage Setup
 
 The application uses Supabase Storage for media uploads. Create a bucket named `media`:
@@ -103,11 +116,15 @@ The application uses Supabase Storage for media uploads. Create a bucket named `
 ### Environment Variables Reference
 
 For reference, the local development uses these variables (in `.env.local`):
-- `REACT_APP_SUPABASE_URL` - Frontend only
-- `REACT_APP_SUPABASE_ANON_KEY` - Frontend only
+- `VITE_SUPABASE_URL` - Frontend (Vite bundler)
+- `VITE_SUPABASE_ANON_KEY` - Frontend (Vite bundler)
+- `REACT_APP_SUPABASE_URL` - Frontend (legacy support)
+- `REACT_APP_SUPABASE_ANON_KEY` - Frontend (legacy support)
 
 The Netlify Functions use these variables (must be set in Netlify dashboard):
 - `SUPABASE_URL` - Backend functions
-- `SUPABASE_ANON_KEY` - Backend functions
+- `SUPABASE_SERVICE_KEY` - Backend functions (service role key for full access)
 
-Note the different naming convention: Frontend uses `REACT_APP_` prefix, backend does not.
+Note the different naming convention: Frontend uses `VITE_` prefix (for Vite bundler), backend uses plain names.
+
+**Important**: The backend uses `SUPABASE_SERVICE_KEY` (service role) instead of the anon key to bypass Row Level Security (RLS) policies.
