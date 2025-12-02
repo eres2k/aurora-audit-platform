@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Camera, AlertTriangle, Star, ChevronDown, MinusCircle } from 'lucide-react';
+import { Check, X, Camera, AlertTriangle, Star, ChevronDown, MinusCircle, Plus, Trash2, Image, ClipboardList } from 'lucide-react';
 
 export default function QuestionItem({
   question,
@@ -9,8 +9,32 @@ export default function QuestionItem({
   onPhotoCapture,
   note,
   onNoteChange,
+  photos = [],
+  onAddPhoto,
+  onRemovePhoto,
+  onCreateAction,
+  showActionButton = false,
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [showActionForm, setShowActionForm] = useState(false);
+  const [actionData, setActionData] = useState({
+    priority: 'medium',
+    notes: '',
+  });
+
+  const handleCreateAction = () => {
+    if (onCreateAction) {
+      onCreateAction({
+        questionId: question.id,
+        questionText: question.text,
+        priority: actionData.priority,
+        notes: actionData.notes,
+        critical: question.critical,
+      });
+      setShowActionForm(false);
+      setActionData({ priority: 'medium', notes: '' });
+    }
+  };
 
   const renderInput = () => {
     switch (question.type) {
@@ -162,9 +186,17 @@ export default function QuestionItem({
               {question.text}
             </span>
           </div>
-          {question.required && (
-            <span className="text-xs text-red-500">Required</span>
-          )}
+          <div className="flex items-center gap-2">
+            {question.required && (
+              <span className="text-xs text-red-500">Required</span>
+            )}
+            {photos && photos.length > 0 && (
+              <span className="text-xs text-amazon-orange flex items-center gap-1">
+                <Image size={12} />
+                {photos.length} photo{photos.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
         </div>
         <motion.div
           animate={{ rotate: isExpanded ? 180 : 0 }}
@@ -199,6 +231,141 @@ export default function QuestionItem({
                 />
               </div>
             )}
+
+            {/* Photo thumbnails */}
+            {photos && photos.length > 0 && (
+              <div className="mt-4">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 block">
+                  Photos ({photos.length})
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {photos.map((photo, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={photo}
+                        alt={`Photo ${index + 1}`}
+                        className="w-20 h-20 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
+                      />
+                      {onRemovePhoto && (
+                        <button
+                          onClick={() => onRemovePhoto(index)}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons row */}
+            <div className="mt-4 flex gap-2">
+              {/* Add Photo button */}
+              {onAddPhoto && question.type !== 'photo' && (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={onAddPhoto}
+                  className="flex-1 py-2.5 px-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-amazon-orange hover:bg-amazon-orange/5 transition-all flex items-center justify-center gap-2 text-sm font-medium text-slate-500 dark:text-slate-400"
+                >
+                  <Camera size={18} />
+                  <span>Add Photo</span>
+                </motion.button>
+              )}
+
+              {/* Create Action button */}
+              {showActionButton && onCreateAction && (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowActionForm(!showActionForm)}
+                  className={`flex-1 py-2.5 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 text-sm font-medium ${
+                    showActionForm
+                      ? 'border-amazon-orange bg-amazon-orange/10 text-amazon-orange'
+                      : 'border-dashed border-slate-300 dark:border-slate-600 hover:border-amazon-orange hover:bg-amazon-orange/5 text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  <ClipboardList size={18} />
+                  <span>Create Action</span>
+                </motion.button>
+              )}
+            </div>
+
+            {/* Action creation form */}
+            <AnimatePresence>
+              {showActionForm && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="mt-4 p-4 bg-amazon-orange/5 border border-amazon-orange/20 rounded-xl space-y-3"
+                >
+                  <div className="text-xs font-bold text-amazon-orange uppercase">
+                    New Action
+                  </div>
+
+                  {/* Priority selection */}
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2 block">
+                      Priority
+                    </label>
+                    <div className="flex gap-2">
+                      {['low', 'medium', 'high'].map((priority) => (
+                        <button
+                          key={priority}
+                          onClick={() => setActionData(prev => ({ ...prev, priority }))}
+                          className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium capitalize transition-all ${
+                            actionData.priority === priority
+                              ? priority === 'high'
+                                ? 'bg-red-500 text-white'
+                                : priority === 'medium'
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-blue-500 text-white'
+                              : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                          }`}
+                        >
+                          {priority}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2 block">
+                      Description
+                    </label>
+                    <textarea
+                      value={actionData.notes}
+                      onChange={(e) => setActionData(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Describe what action needs to be taken..."
+                      rows={2}
+                      className="w-full text-sm p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amazon-orange/50"
+                    />
+                  </div>
+
+                  {/* Submit buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setShowActionForm(false);
+                        setActionData({ priority: 'medium', notes: '' });
+                      }}
+                      className="flex-1 py-2 px-4 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateAction}
+                      className="flex-1 py-2 px-4 rounded-lg bg-amazon-orange text-white text-sm font-medium flex items-center justify-center gap-2"
+                    >
+                      <Plus size={16} />
+                      Create Action
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>

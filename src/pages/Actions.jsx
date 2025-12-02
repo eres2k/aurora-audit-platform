@@ -9,15 +9,27 @@ import {
   User,
   Calendar,
   ChevronRight,
+  Download,
+  Plus,
 } from 'lucide-react';
 import { useAudits } from '../context/AuditContext';
+import { useAuth } from '../context/AuthContext';
 import { Button, Card, Badge, Modal } from '../components/ui';
+import { generateActionsPDF } from '../utils/pdfExport';
 import toast from 'react-hot-toast';
 
 export default function Actions() {
-  const { actions, updateAction } = useAudits();
+  const { actions, updateAction, createAction } = useAudits();
+  const { selectedStation, stations } = useAuth();
   const [filter, setFilter] = useState('open');
   const [selectedAction, setSelectedAction] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newAction, setNewAction] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    location: '',
+  });
 
   const filteredActions = useMemo(() => {
     return actions
@@ -68,16 +80,69 @@ export default function Actions() {
     }
   };
 
+  const handleExportPDF = () => {
+    try {
+      const filename = generateActionsPDF(actions);
+      toast.success(`Exported ${filename}`);
+    } catch (error) {
+      toast.error('Failed to export actions');
+    }
+  };
+
+  const handleCreateAction = async () => {
+    if (!newAction.title.trim()) {
+      toast.error('Please enter a title');
+      return;
+    }
+
+    try {
+      await createAction({
+        title: newAction.title,
+        questionText: newAction.title,
+        description: newAction.description,
+        notes: newAction.description,
+        priority: newAction.priority,
+        location: newAction.location || selectedStation,
+      });
+      toast.success('Action created successfully');
+      setShowCreateModal(false);
+      setNewAction({ title: '', description: '', priority: 'medium', location: '' });
+    } catch (error) {
+      toast.error('Failed to create action');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-display font-bold text-slate-900 dark:text-white">
-          Actions
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Track and manage corrective actions from audits
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-display font-bold text-slate-900 dark:text-white">
+            Actions
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-1">
+            Track and manage corrective actions from audits
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={Download}
+            onClick={handleExportPDF}
+            disabled={actions.length === 0}
+          >
+            Export PDF
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={Plus}
+            onClick={() => setShowCreateModal(true)}
+          >
+            Create Action
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -295,6 +360,109 @@ export default function Actions() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Create Action Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+          setNewAction({ title: '', description: '', priority: 'medium', location: '' });
+        }}
+        title="Create New Action"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+              Title *
+            </label>
+            <input
+              type="text"
+              value={newAction.title}
+              onChange={(e) => setNewAction(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="Enter action title..."
+              className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 border-none focus:ring-2 focus:ring-amazon-orange/50 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+              Description
+            </label>
+            <textarea
+              value={newAction.description}
+              onChange={(e) => setNewAction(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Describe what needs to be done..."
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 border-none resize-none focus:ring-2 focus:ring-amazon-orange/50 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+              Priority
+            </label>
+            <div className="flex gap-2">
+              {['low', 'medium', 'high'].map((priority) => (
+                <button
+                  key={priority}
+                  onClick={() => setNewAction(prev => ({ ...prev, priority }))}
+                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium capitalize transition-all ${
+                    newAction.priority === priority
+                      ? priority === 'high'
+                        ? 'bg-red-500 text-white'
+                        : priority === 'medium'
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-blue-500 text-white'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  {priority}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+              Location
+            </label>
+            <select
+              value={newAction.location}
+              onChange={(e) => setNewAction(prev => ({ ...prev, location: e.target.value }))}
+              className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 border-none focus:ring-2 focus:ring-amazon-orange/50 text-slate-900 dark:text-white outline-none"
+            >
+              <option value="">Select location...</option>
+              {stations?.map((station) => (
+                <option key={station.id} value={station.id}>
+                  {station.name} - {station.fullName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex gap-2 pt-4">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowCreateModal(false);
+                setNewAction({ title: '', description: '', priority: 'medium', location: '' });
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              icon={Plus}
+              onClick={handleCreateAction}
+              className="flex-1"
+            >
+              Create Action
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
