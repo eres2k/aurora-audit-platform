@@ -9,11 +9,12 @@ import {
   Save,
   Clock,
   Building2,
+  ClipboardList,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAudits } from '../context/AuditContext';
 import { useAuth } from '../context/AuthContext';
-import { Button, Card, Progress } from '../components/ui';
+import { Button, Card, Progress, Badge } from '../components/ui';
 import { QuestionItem, SignaturePad, ScoreDisplay, PhotoCapture } from '../components/audit';
 
 export default function NewAudit() {
@@ -22,7 +23,7 @@ export default function NewAudit() {
   const { id: auditIdFromUrl } = useParams();
   const templateIdFromUrl = searchParams.get('template');
 
-  const { audits, templates, createAudit, updateAudit, completeAudit } = useAudits();
+  const { audits, templates, createAudit, updateAudit, completeAudit, createAction } = useAudits();
   const { selectedStation, stations } = useAuth();
 
   const [step, setStep] = useState(templateIdFromUrl ? 'station' : 'select');
@@ -32,12 +33,14 @@ export default function NewAudit() {
   const [audit, setAudit] = useState(null);
   const [answers, setAnswers] = useState({});
   const [notes, setNotes] = useState({});
+  const [questionPhotos, setQuestionPhotos] = useState({}); // { questionId: [photoDataUrl, ...] }
   const [globalNotes, setGlobalNotes] = useState('');
   const [signature, setSignature] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
   const [currentPhotoQuestion, setCurrentPhotoQuestion] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [finalScore, setFinalScore] = useState(null);
+  const [auditActions, setAuditActions] = useState([]); // Actions created during this audit
 
   // Load existing audit if continuing
   useEffect(() => {
@@ -51,6 +54,7 @@ export default function NewAudit() {
           setAuditStation(existingAudit.location || selectedStation || '');
           setAnswers(existingAudit.answers || {});
           setNotes(existingAudit.notes || {});
+          setQuestionPhotos(existingAudit.questionPhotos || {});
           setGlobalNotes(existingAudit.globalNotes || '');
           setSignature(existingAudit.signature || null);
           setStep('audit');
@@ -113,9 +117,46 @@ export default function NewAudit() {
   };
 
   const handlePhotoCaptured = (dataUrl) => {
-    setAnswers(prev => ({ ...prev, [currentPhotoQuestion]: dataUrl }));
+    // For photo type questions, set as answer
+    const question = selectedTemplate?.sections
+      ?.flatMap(s => s.items)
+      ?.find(q => q.id === currentPhotoQuestion);
+
+    if (question?.type === 'photo') {
+      setAnswers(prev => ({ ...prev, [currentPhotoQuestion]: dataUrl }));
+    } else {
+      // For other question types, add to questionPhotos array
+      setQuestionPhotos(prev => ({
+        ...prev,
+        [currentPhotoQuestion]: [...(prev[currentPhotoQuestion] || []), dataUrl],
+      }));
+    }
     setShowCamera(false);
     setCurrentPhotoQuestion(null);
+  };
+
+  const handleRemovePhoto = (questionId, photoIndex) => {
+    setQuestionPhotos(prev => ({
+      ...prev,
+      [questionId]: prev[questionId].filter((_, i) => i !== photoIndex),
+    }));
+  };
+
+  const handleCreateActionForQuestion = async (actionData) => {
+    try {
+      const newAction = await createAction({
+        auditId: audit?.id,
+        questionId: actionData.questionId,
+        questionText: actionData.questionText,
+        priority: actionData.critical ? 'high' : actionData.priority,
+        notes: actionData.notes,
+        location: auditStation,
+      });
+      setAuditActions(prev => [...prev, newAction]);
+      toast.success('Action created successfully');
+    } catch (error) {
+      toast.error('Failed to create action');
+    }
   };
 
   const handleSignatureSave = (dataUrl) => {
@@ -147,6 +188,8 @@ export default function NewAudit() {
     setAudit(null);
     setAnswers({});
     setNotes({});
+    setQuestionPhotos({});
+    setAuditActions([]);
     setAuditStation(selectedStation || '');
   };
 
@@ -155,6 +198,7 @@ export default function NewAudit() {
       await updateAudit(audit.id, {
         answers,
         notes,
+        questionPhotos,
         globalNotes,
         status: 'in_progress',
       });
@@ -171,6 +215,7 @@ export default function NewAudit() {
       const score = await completeAudit(audit.id, {
         answers,
         notes,
+        questionPhotos,
         globalNotes,
         signature,
       });
@@ -438,9 +483,44 @@ export default function NewAudit() {
               onPhotoCapture={() => handlePhotoCapture(question.id)}
               note={notes[question.id]}
               onNoteChange={(value) => handleNoteChange(question.id, value)}
+              photos={questionPhotos[question.id] || []}
+              onAddPhoto={() => handlePhotoCapture(question.id)}
+              onRemovePhoto={(index) => handleRemovePhoto(question.id, index)}
+              onCreateAction={handleCreateActionForQuestion}
+              showActionButton={true}
             />
           ))}
         </div>
+
+        {/* Actions created during this audit */}
+        {auditActions.length > 0 && (
+          <Card className="p-4 bg-amazon-orange/5 border-amazon-orange/20">
+            <div className="flex items-center gap-2 mb-3">
+              <ClipboardList size={18} className="text-amazon-orange" />
+              <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                Actions Created ({auditActions.length})
+              </span>
+            </div>
+            <div className="space-y-2">
+              {auditActions.map((action) => (
+                <div
+                  key={action.id}
+                  className="flex items-center justify-between p-2 bg-white dark:bg-slate-800 rounded-lg"
+                >
+                  <span className="text-sm text-slate-700 dark:text-slate-300 truncate flex-1">
+                    {action.questionText}
+                  </span>
+                  <Badge
+                    variant={action.priority === 'high' ? 'danger' : action.priority === 'medium' ? 'warning' : 'info'}
+                    size="sm"
+                  >
+                    {action.priority}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         {/* Navigation */}
         <div className="flex gap-3 pt-4">
@@ -608,6 +688,8 @@ export default function NewAudit() {
               setAudit(null);
               setAnswers({});
               setNotes({});
+              setQuestionPhotos({});
+              setAuditActions([]);
               setGlobalNotes('');
               setSignature(null);
               setCurrentSection(0);

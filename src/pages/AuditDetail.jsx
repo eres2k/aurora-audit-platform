@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import {
@@ -13,6 +13,8 @@ import {
   XCircle,
   AlertTriangle,
   FileText,
+  Image,
+  ClipboardList,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAudits } from '../context/AuditContext';
@@ -23,14 +25,15 @@ import { generateAuditPDF } from '../utils/pdfExport';
 export default function AuditDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { audits, templates } = useAudits();
+  const { audits, templates, actions } = useAudits();
 
   const audit = audits.find(a => a.id === id);
   const template = audit ? templates.find(t => t.id === audit.templateId) : null;
+  const auditActions = actions.filter(a => a.auditId === id);
 
   const handleExportPDF = () => {
     try {
-      const filename = generateAuditPDF(audit, template);
+      const filename = generateAuditPDF(audit, template, actions);
       toast.success(`Downloaded ${filename}`);
     } catch (error) {
       toast.error('Failed to generate PDF');
@@ -167,6 +170,7 @@ export default function AuditDetail() {
               const answer = audit.answers?.[item.id];
               const answerDisplay = getAnswerDisplay(answer, item.type);
               const note = audit.notes?.[item.id];
+              const photos = audit.questionPhotos?.[item.id] || [];
               const AnswerIcon = answerDisplay.icon;
 
               return (
@@ -198,6 +202,25 @@ export default function AuditDetail() {
                           {note}
                         </p>
                       )}
+                      {/* Display photos */}
+                      {photos.length > 0 && (
+                        <div className="ml-7 mt-3">
+                          <div className="flex items-center gap-1 text-xs text-amazon-orange font-medium mb-2">
+                            <Image size={14} />
+                            <span>{photos.length} photo{photos.length > 1 ? 's' : ''}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {photos.map((photo, photoIndex) => (
+                              <img
+                                key={photoIndex}
+                                src={photo}
+                                alt={`Photo ${photoIndex + 1}`}
+                                className="w-24 h-24 object-cover rounded-lg border border-slate-200 dark:border-slate-700"
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className={`flex items-center gap-2 font-semibold ${answerDisplay.color}`}>
                       {AnswerIcon && <AnswerIcon size={20} />}
@@ -210,6 +233,56 @@ export default function AuditDetail() {
           </div>
         </Card>
       ))}
+
+      {/* Actions */}
+      {auditActions.length > 0 && (
+        <Card className="overflow-hidden">
+          <div className="bg-red-50 dark:bg-red-900/20 px-6 py-4 border-b border-red-200 dark:border-red-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ClipboardList size={20} className="text-red-500" />
+              <h3 className="font-semibold text-red-700 dark:text-red-300">
+                Actions ({auditActions.length})
+              </h3>
+            </div>
+            <Link to="/actions">
+              <Button variant="ghost" size="sm">View All Actions</Button>
+            </Link>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {auditActions.map((action) => (
+              <div key={action.id} className="p-4 flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <p className="font-medium text-slate-900 dark:text-white">
+                    {action.questionText || action.title}
+                  </p>
+                  {action.notes && (
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                      {action.notes}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                    <Badge
+                      variant={action.priority === 'high' ? 'danger' : action.priority === 'medium' ? 'warning' : 'info'}
+                      size="sm"
+                    >
+                      {action.priority}
+                    </Badge>
+                    <Badge
+                      variant={action.status === 'completed' ? 'success' : action.status === 'in_progress' ? 'warning' : 'danger'}
+                      size="sm"
+                    >
+                      {action.status?.replace('_', ' ')}
+                    </Badge>
+                    {action.dueDate && (
+                      <span>Due {format(new Date(action.dueDate), 'MMM d')}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Global Notes */}
       {audit.globalNotes && (

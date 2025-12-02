@@ -398,6 +398,7 @@ export function AuditProvider({ children }) {
       score: null,
       answers: {},
       notes: {},
+      questionPhotos: {}, // Photos per question: { questionId: [photoDataUrl, ...] }
       globalNotes: '',
       photos: [],
       signature: null,
@@ -568,6 +569,56 @@ export function AuditProvider({ children }) {
     }
   };
 
+  // Create action manually (during audit)
+  const createAction = async (actionData) => {
+    const newAction = {
+      id: `action-${uuidv4()}`,
+      auditId: actionData.auditId || null,
+      questionId: actionData.questionId || null,
+      questionText: actionData.questionText || actionData.title || 'Manual Action',
+      title: actionData.title || actionData.questionText || 'Manual Action',
+      description: actionData.description || actionData.notes || '',
+      priority: actionData.priority || 'medium',
+      status: 'open',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      dueDate: actionData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      assignee: actionData.assignee || null,
+      notes: actionData.notes || actionData.description || '',
+      location: actionData.location || selectedStation,
+      isManual: true, // Flag to indicate this was manually created
+    };
+
+    const updatedActions = [...actions, newAction];
+    await saveActions(updatedActions);
+
+    // Sync to server if online
+    if (isOnline && user) {
+      try {
+        await actionsApi.create(newAction);
+      } catch (error) {
+        console.error('Error saving action to server:', error);
+      }
+    }
+
+    return newAction;
+  };
+
+  // Delete action
+  const deleteAction = async (actionId) => {
+    const updated = actions.filter(a => a.id !== actionId);
+    await saveActions(updated);
+
+    // Sync to server if online
+    if (isOnline && user) {
+      try {
+        await actionsApi.delete(actionId);
+      } catch (error) {
+        console.error('Error deleting action from server:', error);
+      }
+    }
+  };
+
   // Create template
   const createTemplate = async (templateData) => {
     const newTemplate = {
@@ -647,7 +698,9 @@ export function AuditProvider({ children }) {
       createTemplate,
       updateTemplate,
       deleteTemplate,
+      createAction,
       updateAction,
+      deleteAction,
       calculateScore,
       loadData,
       syncWithServer,

@@ -39,7 +39,7 @@ const getAnswerDisplay = (answer, type) => {
   return { text: answer || '-', color: COLORS.text };
 };
 
-export const generateAuditPDF = (audit, template) => {
+export const generateAuditPDF = (audit, template, actions = []) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -169,6 +169,7 @@ export const generateAuditPDF = (audit, template) => {
         const answer = audit.answers?.[item.id];
         const answerDisplay = getAnswerDisplay(answer, item.type);
         const note = audit.notes?.[item.id];
+        const photoCount = audit.questionPhotos?.[item.id]?.length || 0;
 
         return [
           `${idx + 1}`,
@@ -176,12 +177,13 @@ export const generateAuditPDF = (audit, template) => {
           item.critical ? 'Yes' : '',
           answerDisplay.text,
           note || '',
+          photoCount > 0 ? `${photoCount} photo${photoCount > 1 ? 's' : ''}` : '',
         ];
       });
 
       autoTable(doc, {
         startY: yPos,
-        head: [['#', 'Question', 'Critical', 'Result', 'Notes']],
+        head: [['#', 'Question', 'Critical', 'Result', 'Notes', 'Photos']],
         body: tableData,
         margin: { left: margin, right: margin },
         styles: {
@@ -201,8 +203,9 @@ export const generateAuditPDF = (audit, template) => {
           0: { cellWidth: 10, halign: 'center' },
           1: { cellWidth: 'auto' },
           2: { cellWidth: 15, halign: 'center' },
-          3: { cellWidth: 20, halign: 'center' },
-          4: { cellWidth: 40 },
+          3: { cellWidth: 18, halign: 'center' },
+          4: { cellWidth: 35 },
+          5: { cellWidth: 20, halign: 'center' },
         },
         didParseCell: function (data) {
           if (data.section === 'body' && data.column.index === 3) {
@@ -219,11 +222,140 @@ export const generateAuditPDF = (audit, template) => {
             data.cell.styles.textColor = COLORS.danger;
             data.cell.styles.fontStyle = 'bold';
           }
+          if (data.section === 'body' && data.column.index === 5 && data.cell.raw) {
+            data.cell.styles.textColor = COLORS.primary;
+            data.cell.styles.fontStyle = 'bold';
+          }
         },
       });
 
       yPos = doc.lastAutoTable.finalY + 10;
+
+      // Add photos for this section if any
+      section.items.forEach((item) => {
+        const photos = audit.questionPhotos?.[item.id] || [];
+        if (photos.length > 0) {
+          checkPageBreak(60);
+
+          doc.setTextColor(...COLORS.textLight);
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'bold');
+          doc.text(`Photos for: ${item.text.substring(0, 50)}${item.text.length > 50 ? '...' : ''}`, margin, yPos);
+          yPos += 5;
+
+          // Add photos in a row
+          const photoWidth = 40;
+          const photoHeight = 30;
+          let xPos = margin;
+
+          photos.forEach((photo, idx) => {
+            if (xPos + photoWidth > pageWidth - margin) {
+              xPos = margin;
+              yPos += photoHeight + 5;
+              checkPageBreak(photoHeight + 10);
+            }
+
+            try {
+              doc.addImage(photo, 'JPEG', xPos, yPos, photoWidth, photoHeight);
+            } catch (e) {
+              // If image fails to load, draw a placeholder
+              doc.setDrawColor(...COLORS.border);
+              doc.setFillColor(248, 250, 252);
+              doc.roundedRect(xPos, yPos, photoWidth, photoHeight, 2, 2, 'FD');
+              doc.setTextColor(...COLORS.textLight);
+              doc.setFontSize(7);
+              doc.text(`Photo ${idx + 1}`, xPos + photoWidth/2, yPos + photoHeight/2, { align: 'center' });
+            }
+
+            xPos += photoWidth + 5;
+          });
+
+          yPos += photoHeight + 10;
+        }
+      });
     });
+  }
+
+  // Actions Section
+  const auditActions = actions.filter(a => a.auditId === audit.id);
+  if (auditActions.length > 0) {
+    checkPageBreak(50);
+
+    // Actions Header
+    doc.setFillColor(...COLORS.danger);
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 10, 2, 2, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Actions (${auditActions.length})`, margin + 5, yPos + 7);
+
+    yPos += 15;
+
+    // Actions table
+    const actionTableData = auditActions.map((action, idx) => [
+      `${idx + 1}`,
+      action.questionText || action.title || 'Action',
+      action.priority?.toUpperCase() || 'MEDIUM',
+      action.status?.replace('_', ' ')?.toUpperCase() || 'OPEN',
+      action.notes || action.description || '',
+      action.dueDate ? format(new Date(action.dueDate), 'MMM d, yyyy') : '',
+    ]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['#', 'Issue', 'Priority', 'Status', 'Notes', 'Due Date']],
+      body: actionTableData,
+      margin: { left: margin, right: margin },
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+        textColor: COLORS.text,
+        lineColor: COLORS.border,
+        lineWidth: 0.1,
+      },
+      headStyles: {
+        fillColor: [254, 226, 226], // Red 100
+        textColor: COLORS.danger,
+        fontStyle: 'bold',
+        fontSize: 8,
+      },
+      columnStyles: {
+        0: { cellWidth: 10, halign: 'center' },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 18, halign: 'center' },
+        3: { cellWidth: 22, halign: 'center' },
+        4: { cellWidth: 35 },
+        5: { cellWidth: 25, halign: 'center' },
+      },
+      didParseCell: function (data) {
+        if (data.section === 'body' && data.column.index === 2) {
+          const value = data.cell.raw;
+          if (value === 'HIGH') {
+            data.cell.styles.textColor = COLORS.danger;
+            data.cell.styles.fontStyle = 'bold';
+          } else if (value === 'MEDIUM') {
+            data.cell.styles.textColor = COLORS.warning;
+            data.cell.styles.fontStyle = 'bold';
+          } else {
+            data.cell.styles.textColor = [59, 130, 246]; // Blue 500
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+        if (data.section === 'body' && data.column.index === 3) {
+          const value = data.cell.raw;
+          if (value === 'COMPLETED') {
+            data.cell.styles.textColor = COLORS.success;
+          } else if (value === 'IN PROGRESS') {
+            data.cell.styles.textColor = COLORS.warning;
+          } else {
+            data.cell.styles.textColor = COLORS.danger;
+          }
+        }
+      },
+    });
+
+    yPos = doc.lastAutoTable.finalY + 10;
   }
 
   // Global Notes
@@ -298,6 +430,220 @@ export const generateAuditPDF = (audit, template) => {
   const auditDate = format(new Date(audit.date), 'yyyy-MM-dd');
   const templateName = (template?.title || audit.templateTitle || 'Audit').replace(/[^a-zA-Z0-9]/g, '_');
   const filename = `${templateName}_${audit.location || 'Station'}_${auditDate}.pdf`;
+
+  doc.save(filename);
+
+  return filename;
+};
+
+// Export actions to PDF
+export const generateActionsPDF = (actions, stationFilter = null) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 15;
+  let yPos = margin;
+
+  // Filter actions if station specified
+  const filteredActions = stationFilter
+    ? actions.filter(a => a.location === stationFilter)
+    : actions;
+
+  // Helper function to add new page if needed
+  const checkPageBreak = (requiredSpace = 30) => {
+    if (yPos + requiredSpace > pageHeight - margin) {
+      doc.addPage();
+      yPos = margin;
+      return true;
+    }
+    return false;
+  };
+
+  // Header
+  doc.setFillColor(...COLORS.primary);
+  doc.rect(0, 0, pageWidth, 35, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text('AuditFlow Pro', margin, 18);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Actions Report', margin, 27);
+
+  doc.setFontSize(9);
+  doc.text(`Generated: ${format(new Date(), 'MMM d, yyyy h:mm a')}`, pageWidth - margin, 18, { align: 'right' });
+  if (stationFilter) {
+    doc.text(`Station: ${stationFilter}`, pageWidth - margin, 27, { align: 'right' });
+  }
+
+  yPos = 50;
+
+  // Summary Stats
+  const openCount = filteredActions.filter(a => a.status === 'open').length;
+  const inProgressCount = filteredActions.filter(a => a.status === 'in_progress').length;
+  const completedCount = filteredActions.filter(a => a.status === 'completed').length;
+  const highPriorityCount = filteredActions.filter(a => a.priority === 'high').length;
+
+  doc.setTextColor(...COLORS.text);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Actions Summary', margin, yPos);
+  yPos += 10;
+
+  // Stats boxes
+  const boxWidth = (pageWidth - 2 * margin - 15) / 4;
+
+  // Open
+  doc.setFillColor(...COLORS.danger);
+  doc.roundedRect(margin, yPos, boxWidth, 25, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${openCount}`, margin + boxWidth/2, yPos + 12, { align: 'center' });
+  doc.setFontSize(8);
+  doc.text('OPEN', margin + boxWidth/2, yPos + 20, { align: 'center' });
+
+  // In Progress
+  doc.setFillColor(...COLORS.warning);
+  doc.roundedRect(margin + boxWidth + 5, yPos, boxWidth, 25, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${inProgressCount}`, margin + boxWidth + 5 + boxWidth/2, yPos + 12, { align: 'center' });
+  doc.setFontSize(8);
+  doc.text('IN PROGRESS', margin + boxWidth + 5 + boxWidth/2, yPos + 20, { align: 'center' });
+
+  // Completed
+  doc.setFillColor(...COLORS.success);
+  doc.roundedRect(margin + (boxWidth + 5) * 2, yPos, boxWidth, 25, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${completedCount}`, margin + (boxWidth + 5) * 2 + boxWidth/2, yPos + 12, { align: 'center' });
+  doc.setFontSize(8);
+  doc.text('COMPLETED', margin + (boxWidth + 5) * 2 + boxWidth/2, yPos + 20, { align: 'center' });
+
+  // High Priority
+  doc.setFillColor(239, 68, 68);
+  doc.roundedRect(margin + (boxWidth + 5) * 3, yPos, boxWidth, 25, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${highPriorityCount}`, margin + (boxWidth + 5) * 3 + boxWidth/2, yPos + 12, { align: 'center' });
+  doc.setFontSize(8);
+  doc.text('HIGH PRIORITY', margin + (boxWidth + 5) * 3 + boxWidth/2, yPos + 20, { align: 'center' });
+
+  yPos += 35;
+
+  // Group actions by status
+  const statusGroups = [
+    { status: 'open', label: 'Open Actions', color: COLORS.danger },
+    { status: 'in_progress', label: 'In Progress', color: COLORS.warning },
+    { status: 'completed', label: 'Completed Actions', color: COLORS.success },
+  ];
+
+  statusGroups.forEach(({ status, label, color }) => {
+    const groupActions = filteredActions.filter(a => a.status === status);
+    if (groupActions.length === 0) return;
+
+    checkPageBreak(50);
+
+    // Section header
+    doc.setFillColor(...color);
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 10, 2, 2, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${label} (${groupActions.length})`, margin + 5, yPos + 7);
+
+    yPos += 15;
+
+    // Actions table
+    const tableData = groupActions.map((action, idx) => [
+      `${idx + 1}`,
+      action.questionText || action.title || 'Action',
+      action.priority?.toUpperCase() || 'MEDIUM',
+      action.location || '-',
+      action.notes || action.description || '',
+      action.dueDate ? format(new Date(action.dueDate), 'MMM d') : '-',
+      action.createdAt ? format(new Date(action.createdAt), 'MMM d') : '-',
+    ]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['#', 'Issue', 'Priority', 'Location', 'Notes', 'Due', 'Created']],
+      body: tableData,
+      margin: { left: margin, right: margin },
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        textColor: COLORS.text,
+        lineColor: COLORS.border,
+        lineWidth: 0.1,
+      },
+      headStyles: {
+        fillColor: [241, 245, 249],
+        textColor: COLORS.textLight,
+        fontStyle: 'bold',
+        fontSize: 7,
+      },
+      columnStyles: {
+        0: { cellWidth: 8, halign: 'center' },
+        1: { cellWidth: 'auto' },
+        2: { cellWidth: 16, halign: 'center' },
+        3: { cellWidth: 18, halign: 'center' },
+        4: { cellWidth: 40 },
+        5: { cellWidth: 18, halign: 'center' },
+        6: { cellWidth: 18, halign: 'center' },
+      },
+      didParseCell: function (data) {
+        if (data.section === 'body' && data.column.index === 2) {
+          const value = data.cell.raw;
+          if (value === 'HIGH') {
+            data.cell.styles.textColor = COLORS.danger;
+            data.cell.styles.fontStyle = 'bold';
+          } else if (value === 'MEDIUM') {
+            data.cell.styles.textColor = COLORS.warning;
+            data.cell.styles.fontStyle = 'bold';
+          } else {
+            data.cell.styles.textColor = [59, 130, 246];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      },
+    });
+
+    yPos = doc.lastAutoTable.finalY + 10;
+  });
+
+  // Footer on all pages
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setTextColor(...COLORS.textLight);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      `Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      pageHeight - 10,
+      { align: 'center' }
+    );
+    doc.text(
+      'Generated by AuditFlow Pro',
+      margin,
+      pageHeight - 10
+    );
+  }
+
+  // Generate filename and save
+  const dateStr = format(new Date(), 'yyyy-MM-dd');
+  const filename = stationFilter
+    ? `Actions_${stationFilter}_${dateStr}.pdf`
+    : `Actions_All_${dateStr}.pdf`;
 
   doc.save(filename);
 
