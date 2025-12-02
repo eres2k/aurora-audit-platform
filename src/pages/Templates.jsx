@@ -11,6 +11,7 @@ import {
   Upload,
   AlertCircle,
   CheckCircle,
+  Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAudits } from '../context/AuditContext';
@@ -18,12 +19,27 @@ import { Button, Card, Input, Modal } from '../components/ui';
 
 export default function Templates() {
   const navigate = useNavigate();
-  const { templates, createTemplate } = useAudits();
+  const { templates, createTemplate, deleteTemplate } = useAudits();
   const [search, setSearch] = useState('');
   const [showNewTemplateModal, setShowNewTemplateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState(null);
   const fileInputRef = useRef(null);
+
+  const handleDeleteTemplate = async () => {
+    if (!templateToDelete) return;
+
+    try {
+      await deleteTemplate(templateToDelete.id);
+      toast.success('Template deleted successfully');
+      setShowDeleteModal(false);
+      setTemplateToDelete(null);
+    } catch (error) {
+      toast.error(error.message || 'Failed to delete template');
+    }
+  };
 
   const filteredTemplates = templates.filter(template =>
     template.title?.toLowerCase().includes(search.toLowerCase()) ||
@@ -257,14 +273,20 @@ export default function Templates() {
               </div>
 
               <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-700">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => {}}
-                >
-                  View Details
-                </Button>
+                {!template.isDefault && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTemplateToDelete(template);
+                      setShowDeleteModal(true);
+                    }}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                )}
                 <Button
                   variant="primary"
                   size="sm"
@@ -430,6 +452,51 @@ export default function Templates() {
             </Button>
           </div>
         )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setTemplateToDelete(null);
+        }}
+        title="Delete Template"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+            <AlertCircle className="text-red-500 flex-shrink-0" size={24} />
+            <div>
+              <p className="font-medium text-red-800 dark:text-red-200">
+                Are you sure you want to delete this template?
+              </p>
+              <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                "{templateToDelete?.title}" will be permanently removed.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowDeleteModal(false);
+                setTemplateToDelete(null);
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              icon={Trash2}
+              onClick={handleDeleteTemplate}
+              className="flex-1"
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

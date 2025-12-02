@@ -473,6 +473,7 @@ export function AuditProvider({ children }) {
               createdAt: new Date().toISOString(),
               dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               assignee: null,
+              owner: null, // Can be assigned later: OPS, ACES, RME, WHS
               notes: finalData.notes?.[item.id] || '',
               location: selectedStation,
             });
@@ -584,6 +585,7 @@ export function AuditProvider({ children }) {
       updatedAt: new Date().toISOString(),
       dueDate: actionData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       assignee: actionData.assignee || null,
+      owner: actionData.owner || null, // Owner team: OPS, ACES, RME, WHS
       notes: actionData.notes || actionData.description || '',
       location: actionData.location || selectedStation,
       isManual: true, // Flag to indicate this was manually created

@@ -11,6 +11,8 @@ import {
   ChevronRight,
   Download,
   Plus,
+  Trash2,
+  Users,
 } from 'lucide-react';
 import { useAudits } from '../context/AuditContext';
 import { useAuth } from '../context/AuthContext';
@@ -18,17 +20,23 @@ import { Button, Card, Badge, Modal } from '../components/ui';
 import { generateActionsPDF } from '../utils/pdfExport';
 import toast from 'react-hot-toast';
 
+// Owner options for actions
+const OWNER_OPTIONS = ['OPS', 'ACES', 'RME', 'WHS'];
+
 export default function Actions() {
-  const { actions, updateAction, createAction } = useAudits();
+  const { actions, updateAction, createAction, deleteAction } = useAudits();
   const { selectedStation, stations } = useAuth();
   const [filter, setFilter] = useState('open');
   const [selectedAction, setSelectedAction] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [actionToDelete, setActionToDelete] = useState(null);
   const [newAction, setNewAction] = useState({
     title: '',
     description: '',
     priority: 'medium',
     location: '',
+    owner: '',
   });
 
   const filteredActions = useMemo(() => {
@@ -103,12 +111,36 @@ export default function Actions() {
         notes: newAction.description,
         priority: newAction.priority,
         location: newAction.location || selectedStation,
+        owner: newAction.owner || null,
       });
       toast.success('Action created successfully');
       setShowCreateModal(false);
-      setNewAction({ title: '', description: '', priority: 'medium', location: '' });
+      setNewAction({ title: '', description: '', priority: 'medium', location: '', owner: '' });
     } catch (error) {
       toast.error('Failed to create action');
+    }
+  };
+
+  const handleDeleteAction = async () => {
+    if (!actionToDelete) return;
+
+    try {
+      await deleteAction(actionToDelete.id);
+      toast.success('Action deleted successfully');
+      setShowDeleteModal(false);
+      setActionToDelete(null);
+      setSelectedAction(null);
+    } catch (error) {
+      toast.error('Failed to delete action');
+    }
+  };
+
+  const handleOwnerChange = async (actionId, owner) => {
+    try {
+      await updateAction(actionId, { owner: owner || null });
+      toast.success('Owner updated successfully');
+    } catch (error) {
+      toast.error('Failed to update owner');
     }
   };
 
@@ -238,6 +270,12 @@ export default function Actions() {
                             {action.location}
                           </span>
                         )}
+                        {action.owner && (
+                          <span className="flex items-center gap-1">
+                            <Users size={14} />
+                            {action.owner}
+                          </span>
+                        )}
                         <span className="flex items-center gap-1">
                           <Calendar size={14} />
                           {format(new Date(action.createdAt), 'MMM d, yyyy')}
@@ -313,6 +351,35 @@ export default function Actions() {
               </div>
             </div>
 
+            <div>
+              <label className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2 block">Owner</label>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => handleOwnerChange(selectedAction.id, null)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    !selectedAction.owner
+                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  None
+                </button>
+                {OWNER_OPTIONS.map((owner) => (
+                  <button
+                    key={owner}
+                    onClick={() => handleOwnerChange(selectedAction.id, owner)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      selectedAction.owner === owner
+                        ? 'bg-amazon-orange text-white'
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    {owner}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Created</label>
@@ -357,6 +424,21 @@ export default function Actions() {
                   </Button>
                 )}
               </div>
+            </div>
+
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+              <Button
+                variant="danger"
+                size="sm"
+                icon={Trash2}
+                onClick={() => {
+                  setActionToDelete(selectedAction);
+                  setShowDeleteModal(true);
+                }}
+                className="w-full"
+              >
+                Delete Action
+              </Button>
             </div>
           </div>
         )}
@@ -442,12 +524,45 @@ export default function Actions() {
             </select>
           </div>
 
+          <div>
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+              Owner
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setNewAction(prev => ({ ...prev, owner: '' }))}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  !newAction.owner
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                    : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                None
+              </button>
+              {OWNER_OPTIONS.map((owner) => (
+                <button
+                  key={owner}
+                  type="button"
+                  onClick={() => setNewAction(prev => ({ ...prev, owner }))}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    newAction.owner === owner
+                      ? 'bg-amazon-orange text-white'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  {owner}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="flex gap-2 pt-4">
             <Button
               variant="secondary"
               onClick={() => {
                 setShowCreateModal(false);
-                setNewAction({ title: '', description: '', priority: 'medium', location: '' });
+                setNewAction({ title: '', description: '', priority: 'medium', location: '', owner: '' });
               }}
               className="flex-1"
             >
@@ -460,6 +575,51 @@ export default function Actions() {
               className="flex-1"
             >
               Create Action
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setActionToDelete(null);
+        }}
+        title="Delete Action"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+            <AlertTriangle className="text-red-500 flex-shrink-0" size={24} />
+            <div>
+              <p className="font-medium text-red-800 dark:text-red-200">
+                Are you sure you want to delete this action?
+              </p>
+              <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                "{actionToDelete?.questionText || actionToDelete?.title}" will be permanently removed.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setShowDeleteModal(false);
+                setActionToDelete(null);
+              }}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              icon={Trash2}
+              onClick={handleDeleteAction}
+              className="flex-1"
+            >
+              Delete
             </Button>
           </div>
         </div>
