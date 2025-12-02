@@ -10,6 +10,7 @@ import StationSelector from './components/StationSelector';
 import Dashboard from './pages/Dashboard';
 import Audits from './pages/Audits';
 import NewAudit from './pages/NewAudit';
+import AuditDetail from './pages/AuditDetail';
 import Templates from './pages/Templates';
 import Actions from './pages/Actions';
 import Analytics from './pages/Analytics';
@@ -66,7 +67,8 @@ function AppRoutes() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="audits" element={<Audits />} />
         <Route path="audits/new" element={<NewAudit />} />
-        <Route path="audits/:id" element={<Audits />} />
+        <Route path="audits/:id" element={<AuditDetail />} />
+        <Route path="audits/:id/continue" element={<NewAudit />} />
         <Route path="templates" element={<Templates />} />
         <Route path="templates/:id" element={<Templates />} />
         <Route path="actions" element={<Actions />} />

@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 
 const COLORS = {
@@ -179,7 +179,7 @@ export const generateAuditPDF = (audit, template) => {
         ];
       });
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: yPos,
         head: [['#', 'Question', 'Critical', 'Result', 'Notes']],
         body: tableData,

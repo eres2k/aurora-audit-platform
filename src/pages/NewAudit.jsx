@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -19,9 +19,10 @@ import { QuestionItem, SignaturePad, ScoreDisplay, PhotoCapture } from '../compo
 export default function NewAudit() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { id: auditIdFromUrl } = useParams();
   const templateIdFromUrl = searchParams.get('template');
 
-  const { templates, createAudit, updateAudit, completeAudit } = useAudits();
+  const { audits, templates, createAudit, updateAudit, completeAudit } = useAudits();
   const { selectedStation, stations } = useAuth();
 
   const [step, setStep] = useState(templateIdFromUrl ? 'station' : 'select');
@@ -38,15 +39,38 @@ export default function NewAudit() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [finalScore, setFinalScore] = useState(null);
 
+  // Load existing audit if continuing
   useEffect(() => {
-    if (templateIdFromUrl) {
+    if (auditIdFromUrl && audits.length > 0 && templates.length > 0) {
+      const existingAudit = audits.find(a => a.id === auditIdFromUrl);
+      if (existingAudit && existingAudit.status !== 'completed') {
+        const template = templates.find(t => t.id === existingAudit.templateId);
+        if (template) {
+          setAudit(existingAudit);
+          setSelectedTemplate(template);
+          setAuditStation(existingAudit.location || selectedStation || '');
+          setAnswers(existingAudit.answers || {});
+          setNotes(existingAudit.notes || {});
+          setGlobalNotes(existingAudit.globalNotes || '');
+          setSignature(existingAudit.signature || null);
+          setStep('audit');
+        }
+      } else if (existingAudit && existingAudit.status === 'completed') {
+        // Redirect to detail view if audit is completed
+        navigate(`/audits/${auditIdFromUrl}`, { replace: true });
+      }
+    }
+  }, [auditIdFromUrl, audits, templates, selectedStation, navigate]);
+
+  useEffect(() => {
+    if (templateIdFromUrl && !auditIdFromUrl) {
       const template = templates.find(t => t.id === templateIdFromUrl);
       if (template) {
         setSelectedTemplate(template);
         setStep('station');
       }
     }
-  }, [templateIdFromUrl, templates]);
+  }, [templateIdFromUrl, templates, auditIdFromUrl]);
 
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
@@ -109,6 +133,9 @@ export default function NewAudit() {
   const handlePrev = () => {
     if (currentSection > 0) {
       setCurrentSection(prev => prev - 1);
+    } else if (auditIdFromUrl) {
+      // If continuing an existing audit, go back to audits list
+      navigate('/audits');
     } else {
       setStep('station');
     }
