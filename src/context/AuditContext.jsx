@@ -229,7 +229,7 @@ export function AuditProvider({ children }) {
   };
 
   // Create new audit
-  const createAudit = async (templateId) => {
+  const createAudit = async (templateId, stationOverride = null) => {
     const template = templates.find(t => t.id === templateId);
     if (!template) throw new Error('Template not found');
 
@@ -240,7 +240,7 @@ export function AuditProvider({ children }) {
       status: 'draft',
       date: new Date().toISOString(),
       createdBy: user?.email || 'Anonymous',
-      location: selectedStation,
+      location: stationOverride || selectedStation,
       score: null,
       answers: {},
       notes: {},
