@@ -1,97 +1,142 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Building2, CheckCircle2 } from 'lucide-react';
+import { MapPin, Building2, CheckCircle2, Zap } from 'lucide-react';
+import Button from './ui/Button';
 
-const StationSelector = () => {
+export default function StationSelector() {
+  const navigate = useNavigate();
   const { user, stations, selectedStation, selectStation } = useAuth();
 
-  // Station metadata
-  const stationDetails = {
-    DVI1: { name: 'DVI1', fullName: 'Distribution Center 1', color: 'bg-blue-500' },
-    DVI2: { name: 'DVI2', fullName: 'Distribution Center 2', color: 'bg-indigo-500' },
-    DVI3: { name: 'DVI3', fullName: 'Distribution Center 3', color: 'bg-purple-500' },
-    DAP5: { name: 'DAP5', fullName: 'Delivery Station 5', color: 'bg-green-500' },
-    DAP8: { name: 'DAP8', fullName: 'Delivery Station 8', color: 'bg-teal-500' },
+  const handleStationSelect = (stationId) => {
+    selectStation(stationId);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      {/* Background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amazon-orange/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amazon-teal/10 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative max-w-4xl w-full">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg">
-            <Building2 className="w-10 h-10 text-white" />
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-amazon-orange to-amazon-orange-dark rounded-2xl mb-4 shadow-lg shadow-amazon-orange/30">
+            <Building2 size={32} className="text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Select Your Station</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-display font-bold text-white mb-2">
+            Select Your Station
+          </h1>
+          <p className="text-slate-400">
             Welcome, {user?.user_metadata?.full_name || user?.email}
           </p>
-          <p className="text-gray-500 text-sm mt-1">Choose a station to begin your audit session</p>
-        </div>
+          <p className="text-slate-500 text-sm mt-1">
+            Choose a station to begin your audit session
+          </p>
+        </motion.div>
 
         {/* Station Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {stations.map((station) => {
-            const details = stationDetails[station];
-            const isSelected = selectedStation === station;
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8"
+        >
+          {stations.map((station, index) => {
+            const isSelected = selectedStation === station.id;
 
             return (
-              <button
-                key={station}
-                onClick={() => selectStation(station)}
+              <motion.button
+                key={station.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 + index * 0.05 }}
+                onClick={() => handleStationSelect(station.id)}
                 className={`
-                  relative bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 p-6 text-left
-                  ${isSelected ? 'ring-4 ring-blue-500 ring-offset-2' : 'hover:scale-105'}
+                  relative bg-slate-800/50 backdrop-blur rounded-2xl p-6 text-left
+                  border-2 transition-all duration-200
+                  ${isSelected
+                    ? 'border-amazon-orange shadow-lg shadow-amazon-orange/20'
+                    : 'border-slate-700 hover:border-slate-600 hover:bg-slate-800/70'
+                  }
                 `}
               >
                 {/* Selected Indicator */}
                 {isSelected && (
-                  <div className="absolute top-3 right-3">
-                    <CheckCircle2 className="w-6 h-6 text-blue-600" />
-                  </div>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute top-3 right-3"
+                  >
+                    <CheckCircle2 size={24} className="text-amazon-orange" />
+                  </motion.div>
                 )}
 
                 {/* Station Icon */}
-                <div className={`inline-flex items-center justify-center w-12 h-12 ${details.color} rounded-lg mb-4`}>
-                  <MapPin className="w-7 h-7 text-white" />
+                <div className={`inline-flex items-center justify-center w-12 h-12 ${station.color} rounded-xl mb-4`}>
+                  <MapPin size={24} className="text-white" />
                 </div>
 
                 {/* Station Info */}
-                <h3 className="text-xl font-bold text-gray-900 mb-1">{details.name}</h3>
-                <p className="text-gray-600 text-sm">{details.fullName}</p>
+                <h3 className="text-xl font-bold text-white mb-1">{station.name}</h3>
+                <p className="text-slate-400 text-sm">{station.fullName}</p>
 
                 {/* Status Badge */}
-                <div className="mt-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <div className="mt-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-2" />
                   Active
                 </div>
-              </button>
+              </motion.button>
             );
           })}
-        </div>
+        </motion.div>
 
-        {/* Continue Button */}
+        {/* Continue Section */}
         {selectedStation && (
-          <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
-            <p className="text-gray-700 mb-4">
-              You have selected: <span className="font-bold text-blue-600">{selectedStation}</span>
-            </p>
-            <p className="text-sm text-gray-500">
-              Click anywhere outside this panel or the logo to continue to your dashboard
-            </p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-slate-800/50 backdrop-blur rounded-2xl p-6 text-center border border-slate-700"
+          >
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <MapPin size={20} className="text-amazon-orange" />
+              <span className="text-white font-medium">
+                Station selected: <span className="text-amazon-orange">{selectedStation}</span>
+              </span>
+            </div>
+            <Button
+              variant="primary"
+              size="lg"
+              icon={Zap}
+              onClick={() => navigate('/dashboard')}
+              className="px-8"
+            >
+              Continue to Dashboard
+            </Button>
+          </motion.div>
         )}
 
         {/* Info Card */}
         {!selectedStation && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
-            <p className="text-blue-800 text-sm">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="bg-amazon-teal/10 border border-amazon-teal/30 rounded-xl p-4 text-center"
+          >
+            <p className="text-amazon-teal text-sm">
               Select a station to access audit templates and begin your safety inspections
             </p>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>
   );
-};
-
-export default StationSelector;
+}
