@@ -9,12 +9,29 @@ import {
   AlertTriangle,
   ChevronRight,
   FileText,
+  Download,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Badge from '../ui/Badge';
 import Progress from '../ui/Progress';
+import { useAudits } from '../../context/AuditContext';
+import { generateAuditPDF } from '../../utils/pdfExport';
 
 export default function AuditCard({ audit, index = 0 }) {
   const navigate = useNavigate();
+  const { templates } = useAudits();
+
+  const handleExportPDF = (e) => {
+    e.stopPropagation();
+    const template = templates.find(t => t.id === audit.templateId);
+    try {
+      const filename = generateAuditPDF(audit, template);
+      toast.success(`Downloaded ${filename}`);
+    } catch (error) {
+      toast.error('Failed to generate PDF');
+      console.error('PDF export error:', error);
+    }
+  };
 
   const statusConfig = {
     draft: { label: 'Draft', variant: 'default', icon: FileText },
@@ -111,8 +128,19 @@ export default function AuditCard({ audit, index = 0 }) {
           )}
         </div>
 
-        {/* Arrow */}
-        <ChevronRight size={20} className="text-slate-400 group-hover:text-amazon-orange group-hover:translate-x-1 transition-all" />
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          {audit.status === 'completed' && (
+            <button
+              onClick={handleExportPDF}
+              className="p-2 rounded-lg text-slate-400 hover:text-amazon-orange hover:bg-amazon-orange/10 transition-all"
+              title="Export PDF"
+            >
+              <Download size={18} />
+            </button>
+          )}
+          <ChevronRight size={20} className="text-slate-400 group-hover:text-amazon-orange group-hover:translate-x-1 transition-all" />
+        </div>
       </div>
     </motion.div>
   );

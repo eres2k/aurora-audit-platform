@@ -8,6 +8,7 @@ import {
   Check,
   Save,
   Clock,
+  Building2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAudits } from '../context/AuditContext';
@@ -21,10 +22,11 @@ export default function NewAudit() {
   const templateIdFromUrl = searchParams.get('template');
 
   const { templates, createAudit, updateAudit, completeAudit } = useAudits();
-  const { selectedStation } = useAuth();
+  const { selectedStation, stations } = useAuth();
 
-  const [step, setStep] = useState(templateIdFromUrl ? 'audit' : 'select');
+  const [step, setStep] = useState(templateIdFromUrl ? 'station' : 'select');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [auditStation, setAuditStation] = useState(selectedStation || '');
   const [currentSection, setCurrentSection] = useState(0);
   const [audit, setAudit] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -40,15 +42,24 @@ export default function NewAudit() {
     if (templateIdFromUrl) {
       const template = templates.find(t => t.id === templateIdFromUrl);
       if (template) {
-        handleTemplateSelect(template);
+        setSelectedTemplate(template);
+        setStep('station');
       }
     }
   }, [templateIdFromUrl, templates]);
 
-  const handleTemplateSelect = async (template) => {
+  const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
+    setStep('station');
+  };
+
+  const handleStationSelect = async () => {
+    if (!auditStation) {
+      toast.error('Please select a station');
+      return;
+    }
     try {
-      const newAudit = await createAudit(template.id);
+      const newAudit = await createAudit(selectedTemplate.id, auditStation);
       setAudit(newAudit);
       setStep('audit');
     } catch (error) {
@@ -99,12 +110,17 @@ export default function NewAudit() {
     if (currentSection > 0) {
       setCurrentSection(prev => prev - 1);
     } else {
-      setStep('select');
-      setSelectedTemplate(null);
-      setAudit(null);
-      setAnswers({});
-      setNotes({});
+      setStep('station');
     }
+  };
+
+  const handleBackToTemplates = () => {
+    setStep('select');
+    setSelectedTemplate(null);
+    setAudit(null);
+    setAnswers({});
+    setNotes({});
+    setAuditStation(selectedStation || '');
   };
 
   const handleSaveDraft = async () => {
@@ -227,6 +243,112 @@ export default function NewAudit() {
     );
   }
 
+  // Station Selection
+  if (step === 'station' && selectedTemplate) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={ArrowLeft}
+            onClick={handleBackToTemplates}
+          />
+          <div>
+            <h1 className="text-2xl font-display font-bold text-slate-900 dark:text-white">
+              Select Station
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400">
+              Choose the station where this audit will be conducted
+            </p>
+          </div>
+        </div>
+
+        {/* Selected Template Info */}
+        <Card className="p-4 bg-gradient-to-r from-amazon-orange/10 to-amazon-teal/10">
+          <div className="flex items-center gap-4">
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: `${selectedTemplate.color}20` }}
+            >
+              <Clock size={24} style={{ color: selectedTemplate.color }} />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 dark:text-white">
+                {selectedTemplate.title}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {selectedTemplate.sections?.length} sections • ~{selectedTemplate.estimatedTime} min
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Station Selection */}
+        <Card className="p-5">
+          <h3 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+            <Building2 size={20} />
+            Available Stations
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            {stations.map((station) => (
+              <button
+                key={station.id}
+                onClick={() => setAuditStation(station.id)}
+                className={`
+                  p-4 rounded-xl border-2 transition-all text-left
+                  ${auditStation === station.id
+                    ? 'border-amazon-orange bg-amazon-orange/10'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-amazon-orange/50'
+                  }
+                `}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg ${station.color} flex items-center justify-center`}>
+                    <MapPin size={20} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900 dark:text-white">
+                      {station.name}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {station.fullName}
+                    </p>
+                  </div>
+                  {auditStation === station.id && (
+                    <Check size={20} className="ml-auto text-amazon-orange" />
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        {/* Continue Button */}
+        <div className="flex gap-3">
+          <Button
+            variant="secondary"
+            icon={ArrowLeft}
+            onClick={handleBackToTemplates}
+            className="flex-1"
+          >
+            Back
+          </Button>
+          <Button
+            variant="primary"
+            icon={ArrowRight}
+            iconPosition="right"
+            onClick={handleStationSelect}
+            disabled={!auditStation}
+            className="flex-1"
+          >
+            Start Audit
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Audit Form
   if (step === 'audit' && selectedTemplate && currentSectionData) {
     return (
@@ -250,10 +372,10 @@ export default function NewAudit() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {selectedStation && (
+            {auditStation && (
               <div className="flex items-center gap-1 text-sm text-slate-500 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
                 <MapPin size={14} />
-                <span>{selectedStation}</span>
+                <span>{auditStation}</span>
               </div>
             )}
             <div className="text-right">

@@ -7,17 +7,46 @@ import {
   ClipboardList,
   Grid,
   List,
+  Download,
+  FileText,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAudits } from '../context/AuditContext';
 import { Button, Card, Input } from '../components/ui';
 import { AuditCard } from '../components/audit';
+import { generateAuditPDF } from '../utils/pdfExport';
 
 export default function Audits() {
   const navigate = useNavigate();
-  const { audits, loading } = useAudits();
+  const { audits, templates, loading } = useAudits();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [viewMode, setViewMode] = useState('grid');
+
+  const handleExportAllPDFs = async () => {
+    const completedAudits = filteredAudits.filter(a => a.status === 'completed');
+    if (completedAudits.length === 0) {
+      toast.error('No completed audits to export');
+      return;
+    }
+
+    toast.loading(`Exporting ${completedAudits.length} audit(s)...`, { id: 'export' });
+
+    let exported = 0;
+    for (const audit of completedAudits) {
+      try {
+        const template = templates.find(t => t.id === audit.templateId);
+        generateAuditPDF(audit, template);
+        exported++;
+        // Small delay between downloads to prevent browser blocking
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error(`Failed to export audit ${audit.id}:`, error);
+      }
+    }
+
+    toast.success(`Exported ${exported} PDF(s)`, { id: 'export' });
+  };
 
   const filteredAudits = useMemo(() => {
     return audits
@@ -55,13 +84,24 @@ export default function Audits() {
             Manage and review all your safety audits
           </p>
         </div>
-        <Button
-          variant="primary"
-          icon={Plus}
-          onClick={() => navigate('/audits/new')}
-        >
-          New Audit
-        </Button>
+        <div className="flex gap-2">
+          {counts.completed > 0 && (
+            <Button
+              variant="secondary"
+              icon={Download}
+              onClick={handleExportAllPDFs}
+            >
+              Export PDFs
+            </Button>
+          )}
+          <Button
+            variant="primary"
+            icon={Plus}
+            onClick={() => navigate('/audits/new')}
+          >
+            New Audit
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
