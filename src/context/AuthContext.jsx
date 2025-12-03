@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import netlifyIdentity from 'netlify-identity-widget';
+import { usersApi } from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -35,12 +36,38 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
+    // Register existing user in our database
+    if (currentUser) {
+      usersApi.register({
+        id: currentUser.id,
+        email: currentUser.email,
+        name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
+        role: currentUser.app_metadata?.role || 'Auditor',
+        avatar: currentUser.user_metadata?.avatar_url || null,
+      }).catch(error => {
+        console.error('Failed to register existing user:', error);
+      });
+    }
+
     setLoading(false);
 
     // Listen for login events
-    netlifyIdentity.on('login', (user) => {
+    netlifyIdentity.on('login', async (user) => {
       setUser(user);
       netlifyIdentity.close();
+
+      // Register user in our database
+      try {
+        await usersApi.register({
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.full_name || user.email.split('@')[0],
+          role: user.app_metadata?.role || 'Auditor',
+          avatar: user.user_metadata?.avatar_url || null,
+        });
+      } catch (error) {
+        console.error('Failed to register user:', error);
+      }
     });
 
     // Listen for logout events

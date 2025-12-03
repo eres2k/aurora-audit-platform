@@ -155,8 +155,41 @@ export const actionsApi = {
   },
 };
 
+// Users API
+export const usersApi = {
+  getAll: async () => {
+    return apiRequest('users');
+  },
+
+  getById: async (userId) => {
+    return apiRequest(`users?id=${userId}`);
+  },
+
+  register: async (userData) => {
+    return apiRequest('users', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  },
+
+  update: async (userId, updates) => {
+    return apiRequest('users', {
+      method: 'PUT',
+      body: JSON.stringify({ id: userId, ...updates }),
+    });
+  },
+
+  delete: async (userId) => {
+    return apiRequest('users', {
+      method: 'DELETE',
+      body: JSON.stringify({ id: userId }),
+    });
+  },
+};
+
 export default {
   audits: auditsApi,
   templates: templatesApi,
   actions: actionsApi,
+  users: usersApi,
 };

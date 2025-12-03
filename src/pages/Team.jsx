@@ -11,10 +11,12 @@ import {
   AlertTriangle,
   X,
   RotateCcw,
+  RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { Card, Button, Badge } from '../components/ui';
+import { usersApi } from '../utils/api';
 
 // Default team members
 const DEFAULT_TEAM_MEMBERS = [
@@ -53,6 +55,8 @@ const DEFAULT_TEAM_MEMBERS = [
 export default function Team() {
   const { user, selectedStation } = useAuth();
   const [teamMembers, setTeamMembers] = useState([]);
+  const [registeredUsers, setRegisteredUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ open: false, member: null });
 
   // Current user is always an admin
@@ -67,7 +71,22 @@ export default function Team() {
     isCurrentUser: true,
   };
 
-  // Load team members from local storage
+  // Fetch registered users from server
+  const fetchRegisteredUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const response = await usersApi.getAll();
+      const users = response.users || [];
+      // Filter out current user (they're shown separately)
+      const otherUsers = users.filter(u => u.id !== user?.id);
+      setRegisteredUsers(otherUsers);
+    } catch (error) {
+      console.error('Failed to fetch registered users:', error);
+    }
+    setLoadingUsers(false);
+  };
+
+  // Load team members from local storage and fetch registered users
   useEffect(() => {
     const loadTeamMembers = () => {
       const savedMembers = localStorage.getItem('teamMembers');
@@ -86,6 +105,11 @@ export default function Team() {
       }
     };
     loadTeamMembers();
+
+    // Fetch registered users
+    if (user) {
+      fetchRegisteredUsers();
+    }
   }, [user, selectedStation]);
 
   // Save team members to local storage (excluding current user and defaults)
@@ -178,19 +202,19 @@ export default function Team() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-4 text-center">
-          <div className="text-3xl font-bold text-slate-900 dark:text-white">{teamMembers.length}</div>
+          <div className="text-3xl font-bold text-slate-900 dark:text-white">{teamMembers.length + registeredUsers.length}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">Team Members</div>
         </Card>
         <Card className="p-4 text-center">
-          <div className="text-3xl font-bold text-purple-500">{teamMembers.filter(m => m.role === 'Admin').length}</div>
+          <div className="text-3xl font-bold text-purple-500">{teamMembers.filter(m => m.role === 'Admin').length + registeredUsers.filter(u => u.role === 'Admin').length}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">Admins</div>
         </Card>
         <Card className="p-4 text-center">
-          <div className="text-3xl font-bold text-blue-500">{teamMembers.filter(m => m.role === 'Supervisor').length}</div>
+          <div className="text-3xl font-bold text-blue-500">{teamMembers.filter(m => m.role === 'Supervisor').length + registeredUsers.filter(u => u.role === 'Supervisor').length}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">Supervisors</div>
         </Card>
         <Card className="p-4 text-center">
-          <div className="text-3xl font-bold text-green-500">{teamMembers.filter(m => m.role === 'Auditor').length}</div>
+          <div className="text-3xl font-bold text-green-500">{teamMembers.filter(m => m.role === 'Auditor').length + registeredUsers.filter(u => u.role === 'Auditor').length}</div>
           <div className="text-sm text-slate-500 dark:text-slate-400">Auditors</div>
         </Card>
       </div>
@@ -265,6 +289,63 @@ export default function Team() {
             </motion.div>
           );
         })}
+
+        {/* Registered Users from Server */}
+        {registeredUsers.map((regUser, index) => {
+          const roleConfig = getRoleConfig(regUser.role);
+          const RoleIcon = roleConfig.icon;
+
+          return (
+            <motion.div
+              key={regUser.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: (teamMembers.length + index) * 0.05 }}
+            >
+              <Card className="p-5 border-l-4 border-l-amazon-teal">
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amazon-teal to-blue-500 flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-lg font-bold">
+                      {regUser.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-slate-900 dark:text-white truncate">
+                        {regUser.name}
+                      </h3>
+                      <Badge variant="info" size="sm">Registered</Badge>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full mt-1 ${roleConfig.color}`}>
+                      <RoleIcon size={12} />
+                      {regUser.role}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-2 text-sm">
+                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                    <Mail size={14} />
+                    <span className="truncate">{regUser.email}</span>
+                  </div>
+                  {regUser.lastLoginAt && (
+                    <div className="text-xs text-slate-400 dark:text-slate-500">
+                      Last login: {new Date(regUser.lastLoginAt).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </motion.div>
+          );
+        })}
+
+        {/* Loading indicator */}
+        {loadingUsers && (
+          <Card className="p-5 flex items-center justify-center">
+            <RefreshCw size={24} className="text-slate-400 animate-spin" />
+            <span className="ml-2 text-slate-500">Loading users...</span>
+          </Card>
+        )}
       </div>
 
       {/* Info Card */}
