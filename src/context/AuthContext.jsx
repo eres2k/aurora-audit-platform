@@ -36,17 +36,21 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    // Register existing user in our database
+    // Register existing user in our database (with delay to ensure token is ready)
     if (currentUser) {
-      usersApi.register({
-        id: currentUser.id,
-        email: currentUser.email,
-        name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
-        role: currentUser.app_metadata?.role || 'Auditor',
-        avatar: currentUser.user_metadata?.avatar_url || null,
-      }).catch(error => {
-        console.error('Failed to register existing user:', error);
-      });
+      setTimeout(() => {
+        usersApi.register({
+          id: currentUser.id,
+          email: currentUser.email,
+          name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
+          role: currentUser.app_metadata?.role || 'Auditor',
+          avatar: currentUser.user_metadata?.avatar_url || null,
+        }).then(() => {
+          console.log('Existing user registered:', currentUser.email);
+        }).catch(error => {
+          console.error('Failed to register existing user:', error);
+        });
+      }, 500);
     }
 
     setLoading(false);
@@ -56,18 +60,21 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       netlifyIdentity.close();
 
-      // Register user in our database
-      try {
-        await usersApi.register({
-          id: user.id,
-          email: user.email,
-          name: user.user_metadata?.full_name || user.email.split('@')[0],
-          role: user.app_metadata?.role || 'Auditor',
-          avatar: user.user_metadata?.avatar_url || null,
-        });
-      } catch (error) {
-        console.error('Failed to register user:', error);
-      }
+      // Register user in our database (with delay to ensure token is ready)
+      setTimeout(async () => {
+        try {
+          await usersApi.register({
+            id: user.id,
+            email: user.email,
+            name: user.user_metadata?.full_name || user.email.split('@')[0],
+            role: user.app_metadata?.role || 'Auditor',
+            avatar: user.user_metadata?.avatar_url || null,
+          });
+          console.log('User registered successfully:', user.email);
+        } catch (error) {
+          console.error('Failed to register user:', error);
+        }
+      }, 500);
     });
 
     // Listen for logout events

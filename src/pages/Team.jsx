@@ -188,6 +188,14 @@ export default function Team() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            icon={RefreshCw}
+            onClick={fetchRegisteredUsers}
+            disabled={loadingUsers}
+          >
+            {loadingUsers ? 'Loading...' : 'Refresh'}
+          </Button>
           {hasDeletedDefaults() && (
             <Button variant="secondary" icon={RotateCcw} onClick={restoreDefaultMembers}>
               Restore Defaults
