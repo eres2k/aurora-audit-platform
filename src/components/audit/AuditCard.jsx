@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import {
   Clock,
@@ -10,6 +10,8 @@ import {
   ChevronRight,
   FileText,
   Download,
+  Trash2,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Badge from '../ui/Badge';
@@ -19,7 +21,8 @@ import { generateAuditPDF } from '../../utils/pdfExport';
 
 export default function AuditCard({ audit, index = 0 }) {
   const navigate = useNavigate();
-  const { templates } = useAudits();
+  const { templates, deleteAudit } = useAudits();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const handleClick = () => {
     if (audit.status === 'completed') {
@@ -27,6 +30,22 @@ export default function AuditCard({ audit, index = 0 }) {
     } else {
       // Draft or in_progress - continue the audit
       navigate(`/audits/${audit.id}/continue`);
+    }
+  };
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteAudit(audit.id);
+      toast.success('Audit deleted successfully');
+      setShowDeleteModal(false);
+    } catch (error) {
+      toast.error('Failed to delete audit');
+      console.error('Delete audit error:', error);
     }
   };
 
@@ -148,9 +167,94 @@ export default function AuditCard({ audit, index = 0 }) {
               <Download size={18} />
             </button>
           )}
+          <button
+            onClick={handleDelete}
+            className="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+            title="Delete Audit"
+          >
+            <Trash2 size={18} />
+          </button>
           <ChevronRight size={20} className="text-slate-400 group-hover:text-amazon-orange group-hover:translate-x-1 transition-all" />
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDeleteModal(false);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-xl"
+            >
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <AlertTriangle size={24} className="text-red-600 dark:text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Delete Audit
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    This action cannot be undone
+                  </p>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeleteModal(false);
+                  }}
+                  className="ml-auto p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg"
+                >
+                  <X size={20} className="text-slate-500" />
+                </button>
+              </div>
+
+              <p className="text-slate-600 dark:text-slate-300 mb-6">
+                Are you sure you want to delete <strong>"{audit.templateTitle}"</strong>?
+                {audit.status === 'completed' && (
+                  <span className="block mt-2 text-sm text-amber-600 dark:text-amber-400">
+                    This is a completed audit with a score of {audit.score}%.
+                  </span>
+                )}
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeleteModal(false);
+                  }}
+                  className="flex-1 py-2 px-4 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    confirmDelete();
+                  }}
+                  className="flex-1 py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={18} />
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
