@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Camera, AlertTriangle, Star, ChevronDown, MinusCircle, Plus, Trash2, Image, ClipboardList } from 'lucide-react';
+import { Check, X, Camera, AlertTriangle, Star, ChevronDown, MinusCircle, Plus, Trash2, Image, ClipboardList, Users } from 'lucide-react';
+
+// Owner options for actions
+const OWNER_OPTIONS = ['OPS', 'ACES', 'RME', 'WHS'];
 
 export default function QuestionItem({
   question,
@@ -20,6 +23,7 @@ export default function QuestionItem({
   const [actionData, setActionData] = useState({
     priority: 'medium',
     notes: '',
+    owner: '',
   });
 
   const handleCreateAction = () => {
@@ -29,10 +33,11 @@ export default function QuestionItem({
         questionText: question.text,
         priority: actionData.priority,
         notes: actionData.notes,
+        owner: actionData.owner || null,
         critical: question.critical,
       });
       setShowActionForm(false);
-      setActionData({ priority: 'medium', notes: '' });
+      setActionData({ priority: 'medium', notes: '', owner: '' });
     }
   };
 
@@ -330,6 +335,39 @@ export default function QuestionItem({
                     </div>
                   </div>
 
+                  {/* Owner selection */}
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2 block flex items-center gap-1">
+                      <Users size={12} />
+                      Owner
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => setActionData(prev => ({ ...prev, owner: '' }))}
+                        className={`py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                          !actionData.owner
+                            ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                            : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        None
+                      </button>
+                      {OWNER_OPTIONS.map((owner) => (
+                        <button
+                          key={owner}
+                          onClick={() => setActionData(prev => ({ ...prev, owner }))}
+                          className={`py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                            actionData.owner === owner
+                              ? 'bg-amazon-orange text-white'
+                              : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                          }`}
+                        >
+                          {owner}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Notes */}
                   <div>
                     <label className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2 block">
@@ -349,7 +387,7 @@ export default function QuestionItem({
                     <button
                       onClick={() => {
                         setShowActionForm(false);
-                        setActionData({ priority: 'medium', notes: '' });
+                        setActionData({ priority: 'medium', notes: '', owner: '' });
                       }}
                       className="flex-1 py-2 px-4 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-sm font-medium"
                     >

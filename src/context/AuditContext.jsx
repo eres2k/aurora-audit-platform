@@ -666,12 +666,6 @@ export function AuditProvider({ children }) {
 
   // Delete template
   const deleteTemplate = async (templateId) => {
-    // Don't delete default templates
-    const template = templates.find(t => t.id === templateId);
-    if (template?.isDefault || DEFAULT_TEMPLATES.find(t => t.id === templateId)) {
-      throw new Error('Cannot delete default templates');
-    }
-
     const updated = templates.filter(t => t.id !== templateId);
     await saveTemplates(updated);
 
