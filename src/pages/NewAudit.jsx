@@ -150,6 +150,7 @@ export default function NewAudit() {
         questionText: actionData.questionText,
         priority: actionData.critical ? 'high' : actionData.priority,
         notes: actionData.notes,
+        owner: actionData.owner,
         location: auditStation,
       });
       setAuditActions(prev => [...prev, newAction]);
@@ -510,12 +511,19 @@ export default function NewAudit() {
                   <span className="text-sm text-slate-700 dark:text-slate-300 truncate flex-1">
                     {action.questionText}
                   </span>
-                  <Badge
-                    variant={action.priority === 'high' ? 'danger' : action.priority === 'medium' ? 'warning' : 'info'}
-                    size="sm"
-                  >
-                    {action.priority}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {action.owner && (
+                      <span className="text-xs text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+                        {action.owner}
+                      </span>
+                    )}
+                    <Badge
+                      variant={action.priority === 'high' ? 'danger' : action.priority === 'medium' ? 'warning' : 'info'}
+                      size="sm"
+                    >
+                      {action.priority}
+                    </Badge>
+                  </div>
                 </div>
               ))}
             </div>

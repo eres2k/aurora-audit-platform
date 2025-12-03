@@ -255,10 +255,13 @@ export function AuditProvider({ children }) {
       const templatesResponse = await templatesApi.getAll();
       const serverTemplates = templatesResponse.templates || [];
 
-      // Merge with default templates
-      const mergedTemplates = [...DEFAULT_TEMPLATES];
+      // Get deleted default template IDs
+      const deletedDefaults = JSON.parse(localStorage.getItem('deletedDefaultTemplates') || '[]');
+
+      // Merge with default templates (excluding deleted ones)
+      const mergedTemplates = DEFAULT_TEMPLATES.filter(t => !deletedDefaults.includes(t.id));
       serverTemplates.forEach(t => {
-        if (!mergedTemplates.find(dt => dt.id === t.id)) {
+        if (!mergedTemplates.find(dt => dt.id === t.id) && !deletedDefaults.includes(t.id)) {
           mergedTemplates.push(t);
         }
       });
@@ -285,11 +288,12 @@ export function AuditProvider({ children }) {
       const savedAudits = await auditsStore.getItem('audits') || [];
       setAudits(savedAudits);
 
-      // Load templates (merge defaults with custom)
+      // Load templates (merge defaults with custom, excluding deleted ones)
       const savedTemplates = await templatesStore.getItem('templates') || [];
-      const mergedTemplates = [...DEFAULT_TEMPLATES];
+      const deletedDefaults = JSON.parse(localStorage.getItem('deletedDefaultTemplates') || '[]');
+      const mergedTemplates = DEFAULT_TEMPLATES.filter(t => !deletedDefaults.includes(t.id));
       savedTemplates.forEach(t => {
-        if (!mergedTemplates.find(dt => dt.id === t.id)) {
+        if (!mergedTemplates.find(dt => dt.id === t.id) && !deletedDefaults.includes(t.id)) {
           mergedTemplates.push(t);
         }
       });
@@ -664,16 +668,21 @@ export function AuditProvider({ children }) {
     }
   };
 
-  // Delete template
+  // Delete template (all templates can be deleted, including defaults)
   const deleteTemplate = async (templateId) => {
-    // Don't delete default templates
-    const template = templates.find(t => t.id === templateId);
-    if (template?.isDefault || DEFAULT_TEMPLATES.find(t => t.id === templateId)) {
-      throw new Error('Cannot delete default templates');
-    }
-
     const updated = templates.filter(t => t.id !== templateId);
     await saveTemplates(updated);
+
+    // Also remove from local storage for default templates
+    const template = templates.find(t => t.id === templateId);
+    if (template?.isDefault) {
+      // Store deleted default template IDs to prevent re-adding on load
+      const deletedDefaults = JSON.parse(localStorage.getItem('deletedDefaultTemplates') || '[]');
+      if (!deletedDefaults.includes(templateId)) {
+        deletedDefaults.push(templateId);
+        localStorage.setItem('deletedDefaultTemplates', JSON.stringify(deletedDefaults));
+      }
+    }
 
     // Sync to server if online
     if (isOnline && user) {
@@ -683,6 +692,18 @@ export function AuditProvider({ children }) {
         console.error('Error deleting template from server:', error);
       }
     }
+  };
+
+  // Restore all default templates
+  const restoreDefaultTemplates = async () => {
+    // Clear deleted defaults list
+    localStorage.removeItem('deletedDefaultTemplates');
+
+    // Merge default templates back in
+    const currentCustomTemplates = templates.filter(t => !t.isDefault);
+    const restoredTemplates = [...DEFAULT_TEMPLATES, ...currentCustomTemplates];
+    await saveTemplates(restoredTemplates);
+    setTemplates(restoredTemplates);
   };
 
   return (
@@ -700,6 +721,7 @@ export function AuditProvider({ children }) {
       createTemplate,
       updateTemplate,
       deleteTemplate,
+      restoreDefaultTemplates,
       createAction,
       updateAction,
       deleteAction,
