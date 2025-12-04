@@ -1,5 +1,5 @@
 // Netlify Function for users CRUD operations using Netlify Blobs
-import { getStore } from '@netlify/blobs';
+import { getBlobStore } from './lib/blob-store.js';
 
 // CORS headers
 const headers = {
@@ -27,7 +27,7 @@ export const handler = async (event, context) => {
     };
   }
 
-  const store = getStore('users');
+  const store = getBlobStore('users');
   const method = event.httpMethod;
   const params = event.queryStringParameters || {};
 
