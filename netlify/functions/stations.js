@@ -1,7 +1,7 @@
 // Netlify Function to get available stations
 // This function returns the list of stations a user can access
 
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   // Get the user from the Netlify Identity context
   const { user } = context.clientContext;
 
