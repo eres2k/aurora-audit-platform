@@ -10,14 +10,12 @@ import {
   Clock,
   Building2,
   ClipboardList,
-  HelpCircle,
-  MessageCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAudits } from '../context/AuditContext';
 import { useAuth } from '../context/AuthContext';
 import { Button, Card, Progress, Badge } from '../components/ui';
-import { QuestionItem, SignaturePad, ScoreDisplay, PhotoCapture, PolicyChatbot } from '../components/audit';
+import { QuestionItem, SignaturePad, ScoreDisplay, PhotoCapture } from '../components/audit';
 
 export default function NewAudit() {
   const navigate = useNavigate();
@@ -43,7 +41,6 @@ export default function NewAudit() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [finalScore, setFinalScore] = useState(null);
   const [auditActions, setAuditActions] = useState([]); // Actions created during this audit
-  const [showPolicyChat, setShowPolicyChat] = useState(false); // Policy chatbot visibility
 
   // Load existing audit if continuing
   useEffect(() => {
@@ -563,25 +560,6 @@ export default function NewAudit() {
             />
           )}
         </AnimatePresence>
-
-        {/* Floating Policy Help Button */}
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowPolicyChat(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-full shadow-lg shadow-teal-500/30 flex items-center justify-center z-40"
-          title="Ask AuditHub - Policy Help"
-        >
-          <HelpCircle size={24} />
-        </motion.button>
-
-        {/* Policy Chatbot */}
-        <PolicyChatbot
-          isOpen={showPolicyChat}
-          onClose={() => setShowPolicyChat(false)}
-        />
       </div>
     );
   }
@@ -674,25 +652,6 @@ export default function NewAudit() {
             Submit Audit
           </Button>
         </div>
-
-        {/* Floating Policy Help Button */}
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowPolicyChat(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-teal-500 to-blue-500 text-white rounded-full shadow-lg shadow-teal-500/30 flex items-center justify-center z-40"
-          title="Ask AuditHub - Policy Help"
-        >
-          <HelpCircle size={24} />
-        </motion.button>
-
-        {/* Policy Chatbot */}
-        <PolicyChatbot
-          isOpen={showPolicyChat}
-          onClose={() => setShowPolicyChat(false)}
-        />
       </div>
     );
   }

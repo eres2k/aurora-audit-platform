@@ -39,11 +39,12 @@ const getAnswerDisplay = (answer, type) => {
   return { text: answer || '-', color: COLORS.text };
 };
 
-export const generateAuditPDF = (audit, template, actions = []) => {
+export const generateAuditPDF = (audit, template, actions = [], options = {}) => {
+  const { includeAIInsights = false, aiInsights = null } = options;
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 15;
+  const margin = 20;
   let yPos = margin;
 
   // Helper function to add new page if needed
@@ -56,25 +57,32 @@ export const generateAuditPDF = (audit, template, actions = []) => {
     return false;
   };
 
-  // Header with logo area
+  // Professional Header with gradient effect
   doc.setFillColor(...COLORS.primary);
-  doc.rect(0, 0, pageWidth, 35, 'F');
+  doc.rect(0, 0, pageWidth, 40, 'F');
+
+  // Secondary accent bar
+  doc.setFillColor(232, 119, 0); // Darker orange
+  doc.rect(0, 40, pageWidth, 3, 'F');
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
+  doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('AuditHub', margin, 18);
+  doc.text('AuditHub', margin, 20);
 
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text('Audit Report', margin, 27);
+  doc.text('Safety Audit Report', margin, 30);
 
   // Report metadata on the right
   doc.setFontSize(9);
   doc.text(`Generated: ${format(new Date(), 'MMM d, yyyy h:mm a')}`, pageWidth - margin, 18, { align: 'right' });
-  doc.text(`Report ID: ${audit.id.slice(-8).toUpperCase()}`, pageWidth - margin, 27, { align: 'right' });
+  doc.text(`Report ID: ${audit.id.slice(-8).toUpperCase()}`, pageWidth - margin, 28, { align: 'right' });
+  if (audit.createdBy) {
+    doc.text(`Auditor: ${audit.createdBy}`, pageWidth - margin, 38, { align: 'right' });
+  }
 
-  yPos = 50;
+  yPos = 55;
 
   // Audit Title
   doc.setTextColor(...COLORS.text);
@@ -183,15 +191,16 @@ export const generateAuditPDF = (audit, template, actions = []) => {
 
       autoTable(doc, {
         startY: yPos,
-        head: [['#', 'Question', 'Critical', 'Result', 'Notes', 'Photos']],
+        head: [['#', 'Question', 'Critical', 'Result', 'Comments / Observations', 'Evidence']],
         body: tableData,
         margin: { left: margin, right: margin },
         styles: {
           fontSize: 9,
-          cellPadding: 3,
+          cellPadding: 4,
           textColor: COLORS.text,
           lineColor: COLORS.border,
           lineWidth: 0.1,
+          overflow: 'linebreak',
         },
         headStyles: {
           fillColor: [241, 245, 249], // Slate 100
@@ -200,12 +209,12 @@ export const generateAuditPDF = (audit, template, actions = []) => {
           fontSize: 8,
         },
         columnStyles: {
-          0: { cellWidth: 10, halign: 'center' },
-          1: { cellWidth: 'auto' },
-          2: { cellWidth: 15, halign: 'center' },
-          3: { cellWidth: 18, halign: 'center' },
-          4: { cellWidth: 35 },
-          5: { cellWidth: 20, halign: 'center' },
+          0: { cellWidth: 8, halign: 'center' },
+          1: { cellWidth: 50, overflow: 'linebreak' },
+          2: { cellWidth: 12, halign: 'center' },
+          3: { cellWidth: 14, halign: 'center' },
+          4: { cellWidth: 60, overflow: 'linebreak' }, // Much wider comments field
+          5: { cellWidth: 18, halign: 'center' },
         },
         didParseCell: function (data) {
           if (data.section === 'body' && data.column.index === 3) {
@@ -360,23 +369,144 @@ export const generateAuditPDF = (audit, template, actions = []) => {
 
   // Global Notes
   if (audit.globalNotes) {
-    checkPageBreak(40);
+    checkPageBreak(50);
 
     doc.setFillColor(248, 250, 252);
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 30, 2, 2, 'F');
+    const notesHeight = Math.max(40, 30 + audit.globalNotes.length / 3);
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, notesHeight, 3, 3, 'F');
 
     doc.setTextColor(...COLORS.textLight);
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('ADDITIONAL NOTES', margin + 5, yPos + 8);
+    doc.text('ADDITIONAL NOTES', margin + 8, yPos + 12);
 
     doc.setTextColor(...COLORS.text);
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    const splitNotes = doc.splitTextToSize(audit.globalNotes, pageWidth - 2 * margin - 10);
-    doc.text(splitNotes, margin + 5, yPos + 16);
+    const splitNotes = doc.splitTextToSize(audit.globalNotes, pageWidth - 2 * margin - 16);
+    doc.text(splitNotes, margin + 8, yPos + 22);
 
-    yPos += 35 + (splitNotes.length - 1) * 4;
+    yPos += notesHeight + 10;
+  }
+
+  // AI Audit Insights Section
+  if (includeAIInsights && aiInsights) {
+    checkPageBreak(80);
+
+    // AI Insights Header
+    doc.setFillColor(79, 70, 229); // Indigo
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 12, 3, 3, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('AI Audit Insights', margin + 8, yPos + 8);
+
+    // AI badge
+    doc.setFillColor(167, 139, 250); // Purple 400
+    doc.roundedRect(pageWidth - margin - 25, yPos + 2, 20, 8, 2, 2, 'F');
+    doc.setFontSize(7);
+    doc.text('AI', pageWidth - margin - 15, yPos + 7.5, { align: 'center' });
+
+    yPos += 18;
+
+    // Summary Box
+    if (aiInsights.summary) {
+      doc.setFillColor(238, 242, 255); // Indigo 50
+      doc.setDrawColor(199, 210, 254); // Indigo 200
+      const summaryLines = doc.splitTextToSize(aiInsights.summary, pageWidth - 2 * margin - 16);
+      const summaryHeight = 20 + summaryLines.length * 5;
+      doc.roundedRect(margin, yPos, pageWidth - 2 * margin, summaryHeight, 3, 3, 'FD');
+
+      doc.setTextColor(79, 70, 229);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Summary', margin + 8, yPos + 10);
+
+      doc.setTextColor(...COLORS.text);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(summaryLines, margin + 8, yPos + 18);
+
+      yPos += summaryHeight + 8;
+    }
+
+    // Key Findings
+    if (aiInsights.keyFindings && aiInsights.keyFindings.length > 0) {
+      checkPageBreak(50);
+
+      doc.setTextColor(79, 70, 229);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Key Findings', margin, yPos);
+      yPos += 6;
+
+      aiInsights.keyFindings.forEach((finding, idx) => {
+        const findingLines = doc.splitTextToSize(`${idx + 1}. ${finding}`, pageWidth - 2 * margin - 10);
+        doc.setTextColor(...COLORS.text);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(findingLines, margin + 5, yPos);
+        yPos += findingLines.length * 4 + 3;
+      });
+
+      yPos += 5;
+    }
+
+    // Recommendations
+    if (aiInsights.recommendations && aiInsights.recommendations.length > 0) {
+      checkPageBreak(50);
+
+      doc.setTextColor(16, 185, 129); // Emerald
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Recommendations', margin, yPos);
+      yPos += 6;
+
+      aiInsights.recommendations.forEach((rec, idx) => {
+        const recLines = doc.splitTextToSize(`${idx + 1}. ${rec}`, pageWidth - 2 * margin - 10);
+        doc.setTextColor(...COLORS.text);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(recLines, margin + 5, yPos);
+        yPos += recLines.length * 4 + 3;
+      });
+
+      yPos += 5;
+    }
+
+    // Risk Areas
+    if (aiInsights.riskAreas && aiInsights.riskAreas.length > 0) {
+      checkPageBreak(50);
+
+      doc.setTextColor(239, 68, 68); // Red
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Areas of Concern', margin, yPos);
+      yPos += 6;
+
+      aiInsights.riskAreas.forEach((risk, idx) => {
+        const riskLines = doc.splitTextToSize(`${idx + 1}. ${risk}`, pageWidth - 2 * margin - 10);
+        doc.setTextColor(...COLORS.text);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text(riskLines, margin + 5, yPos);
+        yPos += riskLines.length * 4 + 3;
+      });
+
+      yPos += 10;
+    }
+
+    // AI Disclaimer
+    doc.setFillColor(254, 243, 199); // Amber 100
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 16, 2, 2, 'F');
+    doc.setTextColor(180, 83, 9); // Amber 700
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Note: AI insights are generated automatically and should be reviewed by qualified personnel.', margin + 5, yPos + 6);
+    doc.text('Always verify recommendations against current safety regulations and standards.', margin + 5, yPos + 12);
+
+    yPos += 25;
   }
 
   // Signature

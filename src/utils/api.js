@@ -299,6 +299,23 @@ export const aiApi = {
       }),
     });
   },
+
+  /**
+   * Generate detailed AI insights for PDF export
+   * @param {Object} auditData - The completed audit data
+   * @param {Object} templateData - The template for context
+   * @returns {Promise<Object>} Structured insights with summary, findings, recommendations, risks
+   */
+  generatePDFInsights: async (auditData, templateData = null) => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'generate_pdf_insights',
+        audit: auditData,
+        template: templateData,
+      }),
+    });
+  },
 };
 
 export default {

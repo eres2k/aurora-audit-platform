@@ -12,6 +12,7 @@ import {
   Download,
   Trash2,
   X,
+  User,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Badge from '../ui/Badge';
@@ -132,6 +133,12 @@ export default function AuditCard({ audit, index = 0 }) {
           </div>
 
           <div className="space-y-1.5 text-sm text-slate-500 dark:text-slate-400">
+            {audit.createdBy && (
+              <div className="flex items-center gap-2">
+                <User size={16} className="text-amazon-orange" />
+                <span className="font-medium text-slate-700 dark:text-slate-300">{audit.createdBy}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Clock size={16} />
               <span>{format(new Date(audit.date), 'MMM d, yyyy h:mm a')}</span>

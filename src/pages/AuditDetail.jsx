@@ -22,6 +22,7 @@ import {
   Lightbulb,
   ChevronDown,
   ChevronUp,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAudits } from '../context/AuditContext';
@@ -39,6 +40,11 @@ export default function AuditDetail() {
   const [insights, setInsights] = useState(null);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(true);
+
+  // Export dialog state
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [includeAIInsights, setIncludeAIInsights] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const audit = audits.find(a => a.id === id);
   const template = audit ? templates.find(t => t.id === audit.templateId) : null;
@@ -65,9 +71,37 @@ export default function AuditDetail() {
     }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
+    setIsExporting(true);
     try {
-      const filename = generateAuditPDF(audit, template, actions);
+      let pdfInsights = null;
+
+      // Generate AI insights if requested
+      if (includeAIInsights) {
+        toast.loading('Generating AI insights...', { id: 'pdf-export' });
+        const response = await aiApi.generatePDFInsights(audit, template);
+        if (response.success && response.data) {
+          pdfInsights = response.data;
+        }
+      }
+
+      const filename = generateAuditPDF(audit, template, auditActions, {
+        includeAIInsights,
+        aiInsights: pdfInsights,
+      });
+      toast.success(`Downloaded ${filename}`, { id: 'pdf-export' });
+      setShowExportDialog(false);
+    } catch (error) {
+      toast.error('Failed to generate PDF', { id: 'pdf-export' });
+      console.error('PDF export error:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleQuickExport = () => {
+    try {
+      const filename = generateAuditPDF(audit, template, auditActions);
       toast.success(`Downloaded ${filename}`);
     } catch (error) {
       toast.error('Failed to generate PDF');
@@ -144,12 +178,98 @@ export default function AuditDetail() {
           <Button
             variant="primary"
             icon={Download}
-            onClick={handleExportPDF}
+            onClick={() => setShowExportDialog(true)}
           >
             Export PDF
           </Button>
         </div>
       </div>
+
+      {/* Export PDF Dialog */}
+      <AnimatePresence>
+        {showExportDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowExportDialog(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amazon-orange to-amazon-teal flex items-center justify-center">
+                    <FileText size={24} className="text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                      Export Audit Report
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Customize your PDF export
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowExportDialog(false)}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                >
+                  <X size={20} className="text-slate-500" />
+                </button>
+              </div>
+
+              {/* Export Options */}
+              <div className="space-y-4 mb-6">
+                <label className="flex items-start gap-4 p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:border-amazon-orange/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={includeAIInsights}
+                    onChange={(e) => setIncludeAIInsights(e.target.checked)}
+                    className="mt-1 w-5 h-5 rounded border-slate-300 text-amazon-orange focus:ring-amazon-orange"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={18} className="text-purple-500" />
+                      <span className="font-medium text-slate-900 dark:text-white">
+                        Include AI Audit Insights
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Add AI-generated summary, findings, recommendations, and risk analysis to your report
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Export Buttons */}
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={handleQuickExport}
+                  className="flex-1"
+                >
+                  Quick Export
+                </Button>
+                <Button
+                  variant="primary"
+                  icon={isExporting ? Loader2 : Download}
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                  className="flex-1"
+                >
+                  {isExporting ? 'Generating...' : 'Export PDF'}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* AuditHub Insights */}
       <AnimatePresence>
