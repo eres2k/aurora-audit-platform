@@ -54,7 +54,7 @@ const auditToReadableText = (audit, template) => {
 // Summarize audit action
 const handleSummarize = async (audit, template) => {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash-lite',
     generationConfig: {
       responseMimeType: 'application/json',
     },
@@ -112,7 +112,7 @@ If the score is high and no critical issues, acknowledge the good performance.`;
 // Analyze image for safety compliance
 const handleAnalyzeImage = async (imageBase64, question) => {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash-lite',
     generationConfig: {
       responseMimeType: 'application/json',
     },
