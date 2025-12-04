@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import {
   ArrowLeft,
@@ -15,21 +15,55 @@ import {
   FileText,
   Image,
   ClipboardList,
+  Sparkles,
+  Loader2,
+  Shield,
+  TrendingUp,
+  Lightbulb,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAudits } from '../context/AuditContext';
 import { Button, Card, Badge } from '../components/ui';
 import { ScoreDisplay } from '../components/audit';
 import { generateAuditPDF } from '../utils/pdfExport';
+import { aiApi } from '../utils/api';
 
 export default function AuditDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { audits, templates, actions } = useAudits();
 
+  // AI Summary state
+  const [aiSummary, setAiSummary] = useState(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(true);
+
   const audit = audits.find(a => a.id === id);
   const template = audit ? templates.find(t => t.id === audit.templateId) : null;
   const auditActions = actions.filter(a => a.auditId === id);
+
+  // Generate AI Executive Summary
+  const handleGenerateSummary = async () => {
+    if (!audit) return;
+
+    setIsLoadingSummary(true);
+    try {
+      const response = await aiApi.summarizeAudit(audit, template);
+      if (response.success && response.data) {
+        setAiSummary(response.data);
+        toast.success('AI summary generated successfully');
+      } else {
+        throw new Error(response.error || 'Failed to generate summary');
+      }
+    } catch (error) {
+      console.error('AI summary error:', error);
+      toast.error(error.message || 'Failed to generate AI summary');
+    } finally {
+      setIsLoadingSummary(false);
+    }
+  };
 
   const handleExportPDF = () => {
     try {
@@ -97,14 +131,192 @@ export default function AuditDetail() {
             </p>
           </div>
         </div>
-        <Button
-          variant="primary"
-          icon={Download}
-          onClick={handleExportPDF}
-        >
-          Export PDF
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            icon={isLoadingSummary ? Loader2 : Sparkles}
+            onClick={handleGenerateSummary}
+            disabled={isLoadingSummary}
+            className={isLoadingSummary ? 'animate-pulse' : ''}
+          >
+            {isLoadingSummary ? 'Analyzing...' : 'AI Summary'}
+          </Button>
+          <Button
+            variant="primary"
+            icon={Download}
+            onClick={handleExportPDF}
+          >
+            Export PDF
+          </Button>
+        </div>
       </div>
+
+      {/* AI Executive Summary */}
+      <AnimatePresence>
+        {aiSummary && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <Card className="overflow-hidden border-2 border-purple-200 dark:border-purple-800">
+              {/* Summary Header */}
+              <button
+                onClick={() => setSummaryExpanded(!summaryExpanded)}
+                className="w-full bg-gradient-to-r from-purple-500/10 via-amazon-orange/10 to-amazon-teal/10 px-6 py-4 border-b border-purple-200 dark:border-purple-800 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-amazon-orange flex items-center justify-center">
+                    <Sparkles size={20} className="text-white" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">
+                      AI Executive Summary
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Powered by Gemini AI
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge
+                    variant={
+                      aiSummary.overallStatus === 'PASS' ? 'success' :
+                      aiSummary.overallStatus === 'CRITICAL' ? 'danger' : 'warning'
+                    }
+                    size="sm"
+                  >
+                    {aiSummary.overallStatus}
+                  </Badge>
+                  {aiSummary.complianceScore && (
+                    <span className="text-2xl font-bold text-amazon-orange">
+                      {aiSummary.complianceScore}
+                    </span>
+                  )}
+                  {summaryExpanded ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
+                </div>
+              </button>
+
+              {/* Summary Content */}
+              <AnimatePresence>
+                {summaryExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="divide-y divide-slate-100 dark:divide-slate-800"
+                  >
+                    {/* Executive Summary */}
+                    <div className="p-6">
+                      <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                        {aiSummary.executiveSummary}
+                      </p>
+                    </div>
+
+                    {/* Key Risks */}
+                    {aiSummary.keyRisks && aiSummary.keyRisks.length > 0 && (
+                      <div className="p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Shield size={18} className="text-red-500" />
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Key Risks</h4>
+                        </div>
+                        <div className="space-y-3">
+                          {aiSummary.keyRisks.map((risk, index) => (
+                            <div
+                              key={index}
+                              className={`p-4 rounded-xl border-l-4 ${
+                                risk.severity === 'high'
+                                  ? 'bg-red-50 dark:bg-red-900/20 border-red-500'
+                                  : risk.severity === 'medium'
+                                  ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
+                                  : 'bg-blue-50 dark:bg-blue-900/20 border-blue-500'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-sm text-slate-700 dark:text-slate-300">{risk.risk}</p>
+                                <Badge
+                                  variant={risk.severity === 'high' ? 'danger' : risk.severity === 'medium' ? 'warning' : 'info'}
+                                  size="sm"
+                                >
+                                  {risk.severity}
+                                </Badge>
+                              </div>
+                              {risk.area && (
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                  Area: {risk.area}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recommendations */}
+                    {aiSummary.recommendations && aiSummary.recommendations.length > 0 && (
+                      <div className="p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Lightbulb size={18} className="text-amazon-orange" />
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Recommendations</h4>
+                        </div>
+                        <div className="space-y-3">
+                          {aiSummary.recommendations.map((rec, index) => (
+                            <div
+                              key={index}
+                              className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl"
+                            >
+                              <div className="flex items-start gap-3">
+                                <Badge
+                                  variant={
+                                    rec.priority === 'immediate' ? 'danger' :
+                                    rec.priority === 'short-term' ? 'warning' : 'info'
+                                  }
+                                  size="sm"
+                                  className="shrink-0 mt-0.5"
+                                >
+                                  {rec.priority}
+                                </Badge>
+                                <div>
+                                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                                    {rec.action}
+                                  </p>
+                                  {rec.impact && (
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                      Impact: {rec.impact}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Positive Findings */}
+                    {aiSummary.positiveFindings && aiSummary.positiveFindings.length > 0 && (
+                      <div className="p-6">
+                        <div className="flex items-center gap-2 mb-4">
+                          <TrendingUp size={18} className="text-emerald-500" />
+                          <h4 className="font-semibold text-slate-900 dark:text-white">Positive Findings</h4>
+                        </div>
+                        <ul className="space-y-2">
+                          {aiSummary.positiveFindings.map((finding, index) => (
+                            <li key={index} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                              <CheckCircle size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                              {finding}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Score and Details */}
       <div className="grid md:grid-cols-3 gap-6">

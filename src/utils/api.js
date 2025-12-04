@@ -187,9 +187,47 @@ export const usersApi = {
   },
 };
 
+// AI API - Gemini multimodal capabilities
+export const aiApi = {
+  /**
+   * Generate an executive summary for an audit using AI
+   * @param {Object} auditData - The audit object
+   * @param {Object} templateData - The template object (optional, for better context)
+   * @returns {Promise<Object>} AI-generated summary with risks and recommendations
+   */
+  summarizeAudit: async (auditData, templateData = null) => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'summarize',
+        audit: auditData,
+        template: templateData,
+      }),
+    });
+  },
+
+  /**
+   * Analyze an image for safety compliance using AI vision
+   * @param {string} imageBase64 - Base64 encoded image (can include data URL prefix)
+   * @param {string} question - The context/question being inspected (optional)
+   * @returns {Promise<Object>} AI analysis with hazard detection and recommendations
+   */
+  analyzeImage: async (imageBase64, question = null) => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'analyze_image',
+        imageBase64: imageBase64,
+        question: question,
+      }),
+    });
+  },
+};
+
 export default {
   audits: auditsApi,
   templates: templatesApi,
   actions: actionsApi,
   users: usersApi,
+  ai: aiApi,
 };
