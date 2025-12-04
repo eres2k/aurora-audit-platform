@@ -389,24 +389,18 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
     yPos += notesHeight + 10;
   }
 
-  // AI Audit Insights Section
+  // Audit Insights Section
   if (includeAIInsights && aiInsights) {
     checkPageBreak(80);
 
-    // AI Insights Header
+    // Insights Header
     doc.setFillColor(79, 70, 229); // Indigo
     doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 12, 3, 3, 'F');
 
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
-    doc.text('AI Audit Insights', margin + 8, yPos + 8);
-
-    // AI badge
-    doc.setFillColor(167, 139, 250); // Purple 400
-    doc.roundedRect(pageWidth - margin - 25, yPos + 2, 20, 8, 2, 2, 'F');
-    doc.setFontSize(7);
-    doc.text('AI', pageWidth - margin - 15, yPos + 7.5, { align: 'center' });
+    doc.text('Audit Insights', margin + 8, yPos + 8);
 
     yPos += 18;
 
@@ -497,13 +491,13 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
       yPos += 10;
     }
 
-    // AI Disclaimer
+    // Disclaimer
     doc.setFillColor(254, 243, 199); // Amber 100
     doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 16, 2, 2, 'F');
     doc.setTextColor(180, 83, 9); // Amber 700
     doc.setFontSize(7);
     doc.setFont('helvetica', 'italic');
-    doc.text('Note: AI insights are generated automatically and should be reviewed by qualified personnel.', margin + 5, yPos + 6);
+    doc.text('Note: Insights are generated automatically and should be reviewed by qualified personnel.', margin + 5, yPos + 6);
     doc.text('Always verify recommendations against current safety regulations and standards.', margin + 5, yPos + 12);
 
     yPos += 25;

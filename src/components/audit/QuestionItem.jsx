@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Camera, AlertTriangle, Star, ChevronDown, MinusCircle, Plus, Trash2, Image, ClipboardList, Users, Sparkles, Loader2, Shield, XCircle, Mic, MicOff, Square } from 'lucide-react';
+import { Check, X, Camera, AlertTriangle, Star, ChevronDown, MinusCircle, Plus, Trash2, Image, ClipboardList, Users, Sparkles, Loader2, Shield, XCircle, Mic, MicOff, Square, HelpCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { aiApi } from '../../utils/api';
+import PolicyChatbot from './PolicyChatbot';
 
 // Check if Web Speech API is available
 const isSpeechRecognitionSupported = () => {
@@ -35,6 +36,10 @@ export default function QuestionItem({
   // Safety Analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [safetyAnalysis, setSafetyAnalysis] = useState(null);
+
+  // Help chatbot state
+  const [showHelpChatbot, setShowHelpChatbot] = useState(false);
+  const [helpInitialMessage, setHelpInitialMessage] = useState('');
 
   // Voice Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -152,10 +157,10 @@ export default function QuestionItem({
       }
     } catch (error) {
       console.error('Voice processing error:', error);
-      // Still save the raw transcript even if AI processing fails
+      // Still save the raw transcript even if processing fails
       if (onNoteChange && transcript) {
         onNoteChange(transcript);
-        toast('Saved raw transcript (AI processing failed)', { icon: '⚠️' });
+        toast('Saved raw transcript (processing failed)', { icon: '⚠️' });
       } else {
         toast.error(error.message || 'Failed to process voice note');
       }
@@ -171,6 +176,28 @@ export default function QuestionItem({
     }
     setIsRecording(false);
     setTranscript('');
+  };
+
+  // Open help chatbot with question context
+  const openHelpChatbot = () => {
+    const message = `What are the Austrian ASchG (ArbeitnehmerInnenschutzgesetz) requirements and best practices for: "${question.text}"? Please provide relevant regulations, standards, and practical guidance.`;
+    setHelpInitialMessage(message);
+    setShowHelpChatbot(true);
+  };
+
+  // Create action from recommendation
+  const createActionFromRecommendation = (recommendation) => {
+    if (onCreateAction) {
+      onCreateAction({
+        questionId: question.id,
+        questionText: question.text,
+        priority: safetyAnalysis?.severity === 'high' ? 'high' : safetyAnalysis?.severity === 'medium' ? 'medium' : 'low',
+        notes: recommendation,
+        owner: null,
+        critical: question.critical || safetyAnalysis?.severity === 'high',
+      });
+      toast.success('Action created from recommendation');
+    }
   };
 
   // Handle safety image analysis
@@ -379,11 +406,11 @@ export default function QuestionItem({
       animate={{ opacity: 1, y: 0 }}
       className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
     >
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-5 py-4 flex items-start gap-3 text-left"
-      >
-        <div className="flex-1">
+      <div className="w-full px-5 py-4 flex items-start gap-3">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex-1 text-left"
+        >
           <div className="flex items-center gap-2 mb-1">
             {question.critical && (
               <AlertTriangle size={16} className="text-amber-500" />
@@ -403,14 +430,29 @@ export default function QuestionItem({
               </span>
             )}
           </div>
-        </div>
-        <motion.div
-          animate={{ rotate: isExpanded ? 180 : 0 }}
-          className="text-slate-400"
+        </button>
+        {/* Help button for ASchG info */}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            openHelpChatbot();
+          }}
+          className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center hover:bg-teal-200 dark:hover:bg-teal-900/50 transition-colors flex-shrink-0"
+          title="Get ASchG regulations info"
         >
-          <ChevronDown size={20} />
-        </motion.div>
-      </button>
+          <HelpCircle size={16} />
+        </motion.button>
+        <button onClick={() => setIsExpanded(!isExpanded)}>
+          <motion.div
+            animate={{ rotate: isExpanded ? 180 : 0 }}
+            className="text-slate-400"
+          >
+            <ChevronDown size={20} />
+          </motion.div>
+        </button>
+      </div>
 
       <AnimatePresence>
         {isExpanded && (
@@ -544,9 +586,21 @@ export default function QuestionItem({
 
                   {safetyAnalysis.recommendation && (
                     <div className="mt-3 p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
-                      <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
-                        Recommendation
-                      </p>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
+                          Recommendation
+                        </p>
+                        {onCreateAction && (
+                          <motion.button
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => createActionFromRecommendation(safetyAnalysis.recommendation)}
+                            className="text-xs px-2 py-1 bg-amazon-orange text-white rounded-lg hover:bg-amazon-orange/90 transition-colors flex items-center gap-1"
+                          >
+                            <Plus size={12} />
+                            Use as Action
+                          </motion.button>
+                        )}
+                      </div>
                       <p className="text-sm text-slate-700 dark:text-slate-300">
                         {safetyAnalysis.recommendation}
                       </p>
@@ -593,7 +647,7 @@ export default function QuestionItem({
                       ) : (
                         <>
                           <Loader2 size={16} className="animate-spin text-purple-600 dark:text-purple-400" />
-                          <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Processing with AI...</span>
+                          <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Processing...</span>
                         </>
                       )}
                     </div>
@@ -682,9 +736,21 @@ export default function QuestionItem({
 
                   {voiceResult.recommendedAction && (
                     <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
-                      <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
-                        Recommended Action
-                      </p>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
+                          Recommended Action
+                        </p>
+                        {onCreateAction && (
+                          <motion.button
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => createActionFromRecommendation(voiceResult.recommendedAction)}
+                            className="text-xs px-2 py-1 bg-amazon-orange text-white rounded-lg hover:bg-amazon-orange/90 transition-colors flex items-center gap-1"
+                          >
+                            <Plus size={12} />
+                            Use as Action
+                          </motion.button>
+                        )}
+                      </div>
                       <p className="text-sm text-slate-700 dark:text-slate-300">
                         {voiceResult.recommendedAction}
                       </p>
@@ -878,6 +944,13 @@ export default function QuestionItem({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Help Chatbot Modal */}
+      <PolicyChatbot
+        isOpen={showHelpChatbot}
+        onClose={() => setShowHelpChatbot(false)}
+        initialMessage={helpInitialMessage}
+      />
     </motion.div>
   );
 }
