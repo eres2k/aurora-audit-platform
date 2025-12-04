@@ -4,25 +4,36 @@ import netlifyIdentity from 'netlify-identity-widget';
 const API_BASE = '/.netlify/functions';
 
 // Get the current user's JWT token for authenticated requests
-const getAuthHeaders = () => {
+// Uses user.jwt() which returns a Promise and refreshes the token if expired
+const getAuthHeaders = async () => {
   const user = netlifyIdentity.currentUser();
   if (!user) {
     return {};
   }
 
-  return {
-    'Authorization': `Bearer ${user.token.access_token}`,
-  };
+  try {
+    // Get a fresh JWT token (automatically refreshes if expired)
+    const token = await user.jwt();
+    return {
+      'Authorization': `Bearer ${token}`,
+    };
+  } catch (error) {
+    console.error('Failed to get auth token:', error);
+    return {};
+  }
 };
 
 // Generic API request handler with retry logic
 const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE}/${endpoint}`;
 
+  // Get auth headers (async to ensure fresh token)
+  const authHeaders = await getAuthHeaders();
+
   const defaultOptions = {
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeaders(),
+      ...authHeaders,
     },
   };
 
