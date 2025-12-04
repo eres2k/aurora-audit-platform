@@ -8,15 +8,15 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 overflow-x-hidden">
       {/* Desktop Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main Content */}
-      <div className="lg:pl-72">
+      <div className="lg:pl-72 overflow-x-hidden">
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="p-4 lg:p-6 pb-24 lg:pb-6">
+        <main className="p-4 lg:p-6 pb-24 lg:pb-6 overflow-x-hidden max-w-full">
           <Outlet />
         </main>
       </div>

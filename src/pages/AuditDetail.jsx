@@ -35,33 +35,33 @@ export default function AuditDetail() {
   const navigate = useNavigate();
   const { audits, templates, actions } = useAudits();
 
-  // AI Summary state
-  const [aiSummary, setAiSummary] = useState(null);
-  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  // Insights state
+  const [insights, setInsights] = useState(null);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(true);
 
   const audit = audits.find(a => a.id === id);
   const template = audit ? templates.find(t => t.id === audit.templateId) : null;
   const auditActions = actions.filter(a => a.auditId === id);
 
-  // Generate AI Executive Summary
-  const handleGenerateSummary = async () => {
+  // Generate Insights Summary
+  const handleGenerateInsights = async () => {
     if (!audit) return;
 
-    setIsLoadingSummary(true);
+    setIsLoadingInsights(true);
     try {
       const response = await aiApi.summarizeAudit(audit, template);
       if (response.success && response.data) {
-        setAiSummary(response.data);
-        toast.success('AI summary generated successfully');
+        setInsights(response.data);
+        toast.success('Insights generated successfully');
       } else {
-        throw new Error(response.error || 'Failed to generate summary');
+        throw new Error(response.error || 'Failed to generate insights');
       }
     } catch (error) {
-      console.error('AI summary error:', error);
-      toast.error(error.message || 'Failed to generate AI summary');
+      console.error('Insights error:', error);
+      toast.error(error.message || 'Failed to generate insights');
     } finally {
-      setIsLoadingSummary(false);
+      setIsLoadingInsights(false);
     }
   };
 
@@ -134,12 +134,12 @@ export default function AuditDetail() {
         <div className="flex gap-2">
           <Button
             variant="secondary"
-            icon={isLoadingSummary ? Loader2 : Sparkles}
-            onClick={handleGenerateSummary}
-            disabled={isLoadingSummary}
-            className={isLoadingSummary ? 'animate-pulse' : ''}
+            icon={isLoadingInsights ? Loader2 : Sparkles}
+            onClick={handleGenerateInsights}
+            disabled={isLoadingInsights}
+            className={isLoadingInsights ? 'animate-pulse' : ''}
           >
-            {isLoadingSummary ? 'Analyzing...' : 'AI Summary'}
+            {isLoadingInsights ? 'Analyzing...' : 'Insights'}
           </Button>
           <Button
             variant="primary"
@@ -151,9 +151,9 @@ export default function AuditDetail() {
         </div>
       </div>
 
-      {/* AI Executive Summary */}
+      {/* AuditHub Insights */}
       <AnimatePresence>
-        {aiSummary && (
+        {insights && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -171,26 +171,26 @@ export default function AuditDetail() {
                   </div>
                   <div className="text-left">
                     <h3 className="font-semibold text-slate-900 dark:text-white">
-                      AI Executive Summary
+                      AuditHub Insights
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Powered by Gemini AI
+                      Executive Summary
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <Badge
                     variant={
-                      aiSummary.overallStatus === 'PASS' ? 'success' :
-                      aiSummary.overallStatus === 'CRITICAL' ? 'danger' : 'warning'
+                      insights.overallStatus === 'PASS' ? 'success' :
+                      insights.overallStatus === 'CRITICAL' ? 'danger' : 'warning'
                     }
                     size="sm"
                   >
-                    {aiSummary.overallStatus}
+                    {insights.overallStatus}
                   </Badge>
-                  {aiSummary.complianceScore && (
+                  {insights.complianceScore && (
                     <span className="text-2xl font-bold text-amazon-orange">
-                      {aiSummary.complianceScore}
+                      {insights.complianceScore}
                     </span>
                   )}
                   {summaryExpanded ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
@@ -209,19 +209,19 @@ export default function AuditDetail() {
                     {/* Executive Summary */}
                     <div className="p-6">
                       <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                        {aiSummary.executiveSummary}
+                        {insights.executiveSummary}
                       </p>
                     </div>
 
                     {/* Key Risks */}
-                    {aiSummary.keyRisks && aiSummary.keyRisks.length > 0 && (
+                    {insights.keyRisks && insights.keyRisks.length > 0 && (
                       <div className="p-6">
                         <div className="flex items-center gap-2 mb-4">
                           <Shield size={18} className="text-red-500" />
                           <h4 className="font-semibold text-slate-900 dark:text-white">Key Risks</h4>
                         </div>
                         <div className="space-y-3">
-                          {aiSummary.keyRisks.map((risk, index) => (
+                          {insights.keyRisks.map((risk, index) => (
                             <div
                               key={index}
                               className={`p-4 rounded-xl border-l-4 ${
@@ -253,14 +253,14 @@ export default function AuditDetail() {
                     )}
 
                     {/* Recommendations */}
-                    {aiSummary.recommendations && aiSummary.recommendations.length > 0 && (
+                    {insights.recommendations && insights.recommendations.length > 0 && (
                       <div className="p-6">
                         <div className="flex items-center gap-2 mb-4">
                           <Lightbulb size={18} className="text-amazon-orange" />
                           <h4 className="font-semibold text-slate-900 dark:text-white">Recommendations</h4>
                         </div>
                         <div className="space-y-3">
-                          {aiSummary.recommendations.map((rec, index) => (
+                          {insights.recommendations.map((rec, index) => (
                             <div
                               key={index}
                               className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl"
@@ -294,14 +294,14 @@ export default function AuditDetail() {
                     )}
 
                     {/* Positive Findings */}
-                    {aiSummary.positiveFindings && aiSummary.positiveFindings.length > 0 && (
+                    {insights.positiveFindings && insights.positiveFindings.length > 0 && (
                       <div className="p-6">
                         <div className="flex items-center gap-2 mb-4">
                           <TrendingUp size={18} className="text-emerald-500" />
                           <h4 className="font-semibold text-slate-900 dark:text-white">Positive Findings</h4>
                         </div>
                         <ul className="space-y-2">
-                          {aiSummary.positiveFindings.map((finding, index) => (
+                          {insights.positiveFindings.map((finding, index) => (
                             <li key={index} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
                               <CheckCircle size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                               {finding}
