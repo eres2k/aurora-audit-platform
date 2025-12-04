@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Camera, AlertTriangle, Star, ChevronDown, MinusCircle, Plus, Trash2, Image, ClipboardList, Users, Sparkles, Loader2, Shield, XCircle } from 'lucide-react';
+import { Check, X, Camera, AlertTriangle, Star, ChevronDown, MinusCircle, Plus, Trash2, Image, ClipboardList, Users, Sparkles, Loader2, Shield, XCircle, Mic, MicOff, Square } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { aiApi } from '../../utils/api';
+
+// Check if Web Speech API is available
+const isSpeechRecognitionSupported = () => {
+  return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+};
 
 const OWNER_OPTIONS = ['OPS', 'ACES', 'RME', 'WHS'];
 
@@ -30,6 +35,143 @@ export default function QuestionItem({
   // Safety Analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [safetyAnalysis, setSafetyAnalysis] = useState(null);
+
+  // Voice Recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [voiceResult, setVoiceResult] = useState(null);
+  const recognitionRef = useRef(null);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if (isSpeechRecognitionSupported()) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            finalTranscript += result[0].transcript;
+          } else {
+            interimTranscript += result[0].transcript;
+          }
+        }
+
+        setTranscript(prev => prev + finalTranscript);
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsRecording(false);
+        if (event.error === 'not-allowed') {
+          toast.error('Microphone access denied. Please allow microphone access.');
+        } else if (event.error !== 'aborted') {
+          toast.error('Voice recognition error. Please try again.');
+        }
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsRecording(false);
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Start voice recording
+  const startRecording = () => {
+    if (!isSpeechRecognitionSupported()) {
+      toast.error('Voice input is not supported in this browser. Try Chrome.');
+      return;
+    }
+
+    setTranscript('');
+    setVoiceResult(null);
+    setIsRecording(true);
+
+    try {
+      recognitionRef.current.start();
+      toast('Listening... Speak now', { icon: '🎤', duration: 2000 });
+    } catch (error) {
+      console.error('Failed to start recognition:', error);
+      setIsRecording(false);
+      toast.error('Failed to start voice input');
+    }
+  };
+
+  // Stop voice recording and process
+  const stopRecording = async () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsRecording(false);
+
+    if (!transcript.trim()) {
+      toast.error('No speech detected. Please try again.');
+      return;
+    }
+
+    setIsProcessingVoice(true);
+
+    try {
+      const response = await aiApi.processVoiceNote(transcript, question.text);
+
+      if (response.success && response.data) {
+        const result = response.data;
+        setVoiceResult(result);
+
+        // Auto-fill note with cleaned text
+        if (onNoteChange && result.cleanedNote) {
+          onNoteChange(result.cleanedNote);
+        }
+
+        // Auto-suggest status if available
+        if (result.suggestedStatus && onChange) {
+          onChange(result.suggestedStatus);
+          toast(`Status auto-set to ${result.suggestedStatus.toUpperCase()}`, {
+            icon: result.suggestedStatus === 'pass' ? '✅' : result.suggestedStatus === 'fail' ? '❌' : '➖',
+            duration: 3000,
+          });
+        }
+
+        toast.success('Voice note processed!');
+      } else {
+        throw new Error(response.error || 'Failed to process voice note');
+      }
+    } catch (error) {
+      console.error('Voice processing error:', error);
+      // Still save the raw transcript even if AI processing fails
+      if (onNoteChange && transcript) {
+        onNoteChange(transcript);
+        toast('Saved raw transcript (AI processing failed)', { icon: '⚠️' });
+      } else {
+        toast.error(error.message || 'Failed to process voice note');
+      }
+    } finally {
+      setIsProcessingVoice(false);
+    }
+  };
+
+  // Cancel recording
+  const cancelRecording = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.abort();
+    }
+    setIsRecording(false);
+    setTranscript('');
+  };
 
   // Handle safety image analysis
   const handleAnalyze = async () => {
@@ -415,8 +557,144 @@ export default function QuestionItem({
               )}
             </AnimatePresence>
 
+            {/* Voice Recording Overlay */}
+            <AnimatePresence>
+              {(isRecording || isProcessingVoice) && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className={`mt-4 p-4 rounded-xl border-2 ${
+                    isRecording
+                      ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'
+                      : 'bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      {isRecording ? (
+                        <>
+                          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                          <span className="text-sm font-medium text-red-700 dark:text-red-300">Recording...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Loader2 size={16} className="animate-spin text-purple-600 dark:text-purple-400" />
+                          <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Processing with AI...</span>
+                        </>
+                      )}
+                    </div>
+                    {isRecording && (
+                      <button
+                        onClick={cancelRecording}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+
+                  {transcript && (
+                    <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg mb-3">
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Transcript:</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">{transcript}</p>
+                    </div>
+                  )}
+
+                  {isRecording && (
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={stopRecording}
+                      className="w-full py-3 px-4 rounded-xl bg-red-500 text-white font-medium flex items-center justify-center gap-2"
+                    >
+                      <Square size={16} fill="white" />
+                      <span>Stop & Process</span>
+                    </motion.button>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Voice AI Result Display */}
+            <AnimatePresence>
+              {voiceResult && !isRecording && !isProcessingVoice && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="mt-4 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-300 dark:border-indigo-700"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center">
+                        <Mic size={16} className="text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                          <Sparkles size={12} />
+                          Voice Note Processed
+                        </p>
+                        {voiceResult.suggestedSeverity && (
+                          <p className={`text-sm font-semibold ${
+                            voiceResult.suggestedSeverity === 'high' ? 'text-red-700 dark:text-red-300' :
+                            voiceResult.suggestedSeverity === 'medium' ? 'text-amber-700 dark:text-amber-300' :
+                            'text-blue-700 dark:text-blue-300'
+                          }`}>
+                            Severity: {voiceResult.suggestedSeverity?.toUpperCase()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setVoiceResult(null)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    >
+                      <XCircle size={18} />
+                    </button>
+                  </div>
+
+                  {voiceResult.keyObservations && voiceResult.keyObservations.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Key Observations:</p>
+                      <ul className="space-y-1">
+                        {voiceResult.keyObservations.map((obs, i) => (
+                          <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
+                            <span className="text-indigo-500">-</span>
+                            <span>{obs}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {voiceResult.recommendedAction && (
+                    <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                      <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                        Recommended Action
+                      </p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">
+                        {voiceResult.recommendedAction}
+                      </p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Action buttons row */}
             <div className="mt-4 flex flex-wrap gap-2">
+              {/* Voice Input button */}
+              {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={startRecording}
+                  className="flex-1 min-w-[120px] py-2.5 px-4 rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-600 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all flex items-center justify-center gap-2 text-sm font-medium text-indigo-600 dark:text-indigo-400"
+                >
+                  <Mic size={18} />
+                  <span>Voice Note</span>
+                </motion.button>
+              )}
+
               {/* Add Photo button */}
               {onAddPhoto && question.type !== 'photo' && (
                 <motion.button

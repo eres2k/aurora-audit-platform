@@ -233,6 +233,72 @@ export const aiApi = {
       }),
     });
   },
+
+  /**
+   * Generate an audit template from a text description
+   * @param {string} prompt - Description of the desired audit template
+   * @param {string} category - Template category (Safety, Quality, Compliance, Operations)
+   * @returns {Promise<Object>} AI-generated template JSON
+   */
+  generateTemplate: async (prompt, category = 'Safety') => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'generate_template',
+        prompt: prompt,
+        category: category,
+      }),
+    });
+  },
+
+  /**
+   * Extract an audit template from an image of a paper form
+   * @param {string} imageBase64 - Base64 encoded image of the paper form
+   * @returns {Promise<Object>} AI-extracted template JSON
+   */
+  imageToTemplate: async (imageBase64) => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'image_to_template',
+        imageBase64: imageBase64,
+      }),
+    });
+  },
+
+  /**
+   * Process a voice note transcript and extract structured data
+   * @param {string} transcript - The transcribed voice note text
+   * @param {string} questionContext - The current audit question context (optional)
+   * @returns {Promise<Object>} Structured data with cleaned note, status suggestion, etc.
+   */
+  processVoiceNote: async (transcript, questionContext = '') => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'process_voice_note',
+        transcript: transcript,
+        questionContext: questionContext,
+      }),
+    });
+  },
+
+  /**
+   * Ask the policy compliance chatbot a question
+   * @param {string} question - The user's question about safety policies
+   * @param {Array} conversationHistory - Previous messages for context [{role, content}]
+   * @returns {Promise<Object>} AI response with answer, sources, and related topics
+   */
+  policyChat: async (question, conversationHistory = []) => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'policy_chat',
+        question: question,
+        conversationHistory: conversationHistory,
+      }),
+    });
+  },
 };
 
 export default {
