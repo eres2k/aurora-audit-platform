@@ -112,7 +112,7 @@ If the score is high and no critical issues, acknowledge the good performance.`;
 // Analyze image for safety compliance
 const handleAnalyzeImage = async (imageBase64, question) => {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash-lite',
+    model: 'gemini-2.5-flash-preview-image',
     generationConfig: {
       responseMimeType: 'application/json',
     },
