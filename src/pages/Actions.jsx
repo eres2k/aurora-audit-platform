@@ -15,6 +15,7 @@ import {
   Users,
   Filter,
   ClipboardList,
+  Hash,
 } from 'lucide-react';
 import { useAudits } from '../context/AuditContext';
 import { useAuth } from '../context/AuthContext';
@@ -251,7 +252,7 @@ export default function Actions() {
           <option value="manual">Manual Actions Only</option>
           {auditsWithActions.map(audit => (
             <option key={audit.id} value={audit.id}>
-              {audit.templateTitle} - {format(new Date(audit.date), 'MMM d, yyyy')}
+              [{audit.shortId || audit.id.slice(-8).toUpperCase()}] {audit.templateTitle} - {format(new Date(audit.date), 'MMM d, yyyy')}
             </option>
           ))}
         </select>
@@ -336,7 +337,13 @@ export default function Actions() {
                           </span>
                         )}
                         {action.auditId && (
-                          <span className="flex items-center gap-1 text-amazon-teal">
+                          <span className="flex items-center gap-1 text-amazon-teal font-medium">
+                            <Hash size={14} />
+                            {action.auditShortId || audits.find(a => a.id === action.auditId)?.shortId || action.auditId.slice(-8).toUpperCase()}
+                          </span>
+                        )}
+                        {action.auditId && (
+                          <span className="flex items-center gap-1 text-slate-400">
                             <ClipboardList size={14} />
                             {audits.find(a => a.id === action.auditId)?.templateTitle || 'Audit'}
                           </span>
@@ -393,6 +400,22 @@ export default function Actions() {
                 <label className="text-sm font-medium text-slate-500 dark:text-slate-400">Notes</label>
                 <p className="text-slate-700 dark:text-slate-300 mt-1">
                   {selectedAction.notes}
+                </p>
+              </div>
+            )}
+
+            {/* Audit ID display */}
+            {selectedAction.auditId && (
+              <div className="p-3 bg-amazon-teal/10 border border-amazon-teal/20 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <Hash size={16} className="text-amazon-teal" />
+                  <label className="text-sm font-medium text-amazon-teal">Audit ID</label>
+                </div>
+                <p className="text-lg font-bold text-amazon-teal mt-1">
+                  {selectedAction.auditShortId || audits.find(a => a.id === selectedAction.auditId)?.shortId || selectedAction.auditId.slice(-8).toUpperCase()}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                  {audits.find(a => a.id === selectedAction.auditId)?.templateTitle || 'Audit'}
                 </p>
               </div>
             )}

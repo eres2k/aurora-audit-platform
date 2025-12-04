@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -10,12 +10,22 @@ import {
   Clock,
   Building2,
   ClipboardList,
+  Mic,
+  Square,
+  Loader2,
+  Sparkles,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAudits } from '../context/AuditContext';
 import { useAuth } from '../context/AuthContext';
 import { Button, Card, Progress, Badge } from '../components/ui';
 import { QuestionItem, SignaturePad, ScoreDisplay, PhotoCapture } from '../components/audit';
+import { aiApi } from '../utils/api';
+
+// Check if Web Speech API is available
+const isSpeechRecognitionSupported = () => {
+  return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+};
 
 export default function NewAudit() {
   const navigate = useNavigate();
@@ -41,6 +51,12 @@ export default function NewAudit() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [finalScore, setFinalScore] = useState(null);
   const [auditActions, setAuditActions] = useState([]); // Actions created during this audit
+
+  // Voice Recording state for global notes
+  const [isRecordingNotes, setIsRecordingNotes] = useState(false);
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [notesTranscript, setNotesTranscript] = useState('');
+  const recognitionRef = useRef(null);
 
   // Load existing audit if continuing
   useEffect(() => {
@@ -75,6 +91,116 @@ export default function NewAudit() {
       }
     }
   }, [templateIdFromUrl, templates, auditIdFromUrl]);
+
+  // Initialize speech recognition for global notes
+  useEffect(() => {
+    if (isSpeechRecognitionSupported()) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event) => {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            finalTranscript += result[0].transcript;
+          }
+        }
+        setNotesTranscript(prev => prev + finalTranscript);
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsRecordingNotes(false);
+        if (event.error === 'not-allowed') {
+          toast.error('Microphone access denied. Please allow microphone access.');
+        } else if (event.error !== 'aborted') {
+          toast.error('Voice recognition error. Please try again.');
+        }
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsRecordingNotes(false);
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Start voice recording for notes
+  const startNotesRecording = () => {
+    if (!isSpeechRecognitionSupported()) {
+      toast.error('Voice input is not supported in this browser. Try Chrome.');
+      return;
+    }
+
+    setNotesTranscript('');
+    setIsRecordingNotes(true);
+
+    try {
+      recognitionRef.current.start();
+      toast('Listening... Speak now', { icon: '🎤', duration: 2000 });
+    } catch (error) {
+      console.error('Failed to start recognition:', error);
+      setIsRecordingNotes(false);
+      toast.error('Failed to start voice input');
+    }
+  };
+
+  // Stop voice recording and process with AI
+  const stopNotesRecording = async () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsRecordingNotes(false);
+
+    if (!notesTranscript.trim()) {
+      toast.error('No speech detected. Please try again.');
+      return;
+    }
+
+    setIsProcessingVoice(true);
+
+    try {
+      const response = await aiApi.processVoiceNote(notesTranscript, 'Audit additional notes and observations');
+
+      if (response.success && response.data) {
+        const result = response.data;
+        // Append cleaned note to existing global notes
+        const cleanedNote = result.cleanedNote || notesTranscript;
+        setGlobalNotes(prev => prev ? `${prev}\n\n${cleanedNote}` : cleanedNote);
+        toast.success('Voice note processed and added!');
+      } else {
+        // Fallback: just append raw transcript
+        setGlobalNotes(prev => prev ? `${prev}\n\n${notesTranscript}` : notesTranscript);
+        toast('Added raw transcript', { icon: '⚠️' });
+      }
+    } catch (error) {
+      console.error('Voice processing error:', error);
+      // Still save the raw transcript
+      setGlobalNotes(prev => prev ? `${prev}\n\n${notesTranscript}` : notesTranscript);
+      toast('Added raw transcript (processing failed)', { icon: '⚠️' });
+    } finally {
+      setIsProcessingVoice(false);
+      setNotesTranscript('');
+    }
+  };
+
+  // Cancel notes recording
+  const cancelNotesRecording = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.abort();
+    }
+    setIsRecordingNotes(false);
+    setNotesTranscript('');
+  };
 
   const handleTemplateSelect = (template) => {
     setSelectedTemplate(template);
@@ -590,16 +716,90 @@ export default function NewAudit() {
           <ScoreDisplay score={calculateCurrentScore()} size="lg" />
         </Card>
 
-        {/* Global Notes */}
+        {/* Global Notes with Voice Input */}
         <Card>
-          <h3 className="font-semibold text-slate-900 dark:text-white mb-3">
-            Additional Notes
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-slate-900 dark:text-white">
+              Additional Notes
+            </h3>
+            {isSpeechRecognitionSupported() && !isRecordingNotes && !isProcessingVoice && (
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={startNotesRecording}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm font-medium shadow-md shadow-indigo-500/30 transition-all"
+              >
+                <Mic size={16} />
+                <span>Voice Note</span>
+              </motion.button>
+            )}
+          </div>
+
+          {/* Voice Recording UI */}
+          <AnimatePresence>
+            {(isRecordingNotes || isProcessingVoice) && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={`mb-4 p-4 rounded-xl border-2 ${
+                  isRecordingNotes
+                    ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'
+                    : 'bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    {isRecordingNotes ? (
+                      <>
+                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                        <span className="text-sm font-medium text-red-700 dark:text-red-300">Recording...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Loader2 size={16} className="animate-spin text-purple-600 dark:text-purple-400" />
+                        <span className="text-sm font-medium text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                          <Sparkles size={14} />
+                          Processing with Gemini AI...
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {isRecordingNotes && (
+                    <button
+                      onClick={cancelNotesRecording}
+                      className="text-xs text-red-500 hover:text-red-700"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+
+                {notesTranscript && (
+                  <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg mb-3">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Transcript:</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-300">{notesTranscript}</p>
+                  </div>
+                )}
+
+                {isRecordingNotes && (
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={stopNotesRecording}
+                    className="w-full py-3 px-4 rounded-xl bg-red-500 text-white font-medium flex items-center justify-center gap-2"
+                  >
+                    <Square size={16} fill="white" />
+                    <span>Stop & Process</span>
+                  </motion.button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <textarea
             value={globalNotes}
             onChange={(e) => setGlobalNotes(e.target.value)}
-            placeholder="Add any additional observations or notes..."
-            rows={3}
+            placeholder="Add any additional observations or notes... You can also use the Voice Note button above to speak your notes."
+            rows={4}
             className="input-field resize-none"
           />
         </Card>

@@ -4,6 +4,16 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from './AuthContext';
 import { auditsApi, templatesApi, actionsApi } from '../utils/api';
 
+// Generate a short, human-readable audit ID
+const generateShortId = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding similar chars like 0/O, 1/I
+  let result = 'AUD-';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
 const AuditContext = createContext();
 
 // Initialize localforage stores (for offline cache)
@@ -512,6 +522,7 @@ export function AuditProvider({ children }) {
 
     const newAudit = {
       id: `audit-${uuidv4()}`,
+      shortId: generateShortId(), // Human-readable unique ID (e.g., AUD-ABC123)
       templateId,
       templateTitle: template.title,
       status: 'draft',
@@ -589,6 +600,7 @@ export function AuditProvider({ children }) {
             newActions.push({
               id: `action-${uuidv4()}`,
               auditId,
+              auditShortId: audit.shortId, // Include the human-readable audit ID
               questionId: item.id,
               questionText: item.text,
               priority: item.critical ? 'high' : 'medium',
@@ -695,9 +707,17 @@ export function AuditProvider({ children }) {
 
   // Create action manually (during audit)
   const createAction = async (actionData) => {
+    // Get the audit's shortId if linked to an audit
+    let auditShortId = null;
+    if (actionData.auditId) {
+      const linkedAudit = audits.find(a => a.id === actionData.auditId);
+      auditShortId = linkedAudit?.shortId || null;
+    }
+
     const newAction = {
       id: `action-${uuidv4()}`,
       auditId: actionData.auditId || null,
+      auditShortId, // Include the human-readable audit ID
       questionId: actionData.questionId || null,
       questionText: actionData.questionText || actionData.title || 'Manual Action',
       title: actionData.title || actionData.questionText || 'Manual Action',

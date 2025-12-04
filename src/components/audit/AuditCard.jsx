@@ -13,6 +13,7 @@ import {
   Trash2,
   X,
   User,
+  Hash,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Badge from '../ui/Badge';
@@ -123,14 +124,20 @@ export default function AuditCard({ audit, index = 0 }) {
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <h3 className="font-semibold text-slate-900 dark:text-white truncate">
-              {audit.templateTitle || 'Audit'}
-            </h3>
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amazon-teal/10 text-amazon-teal text-xs font-bold">
+                <Hash size={12} />
+                {audit.shortId || audit.id.slice(-8).toUpperCase()}
+              </span>
+            </div>
             <Badge variant={status.variant} size="sm">
               {status.label}
             </Badge>
           </div>
+          <h3 className="font-semibold text-slate-900 dark:text-white truncate mb-2">
+            {audit.templateTitle || 'Audit'}
+          </h3>
 
           <div className="space-y-1.5 text-sm text-slate-500 dark:text-slate-400">
             {audit.createdBy && (
