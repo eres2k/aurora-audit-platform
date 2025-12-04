@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   Search,
@@ -12,10 +12,18 @@ import {
   AlertCircle,
   CheckCircle,
   Trash2,
+  Sparkles,
+  Wand2,
+  Image,
+  Loader2,
+  Eye,
+  RefreshCw,
+  Camera,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAudits } from '../context/AuditContext';
 import { Button, Card, Input, Modal } from '../components/ui';
+import { aiApi } from '../utils/api';
 
 export default function Templates() {
   const navigate = useNavigate();
@@ -28,6 +36,16 @@ export default function Templates() {
   const [templateToDelete, setTemplateToDelete] = useState(null);
   const fileInputRef = useRef(null);
 
+  // AI Template Generation state
+  const [aiMode, setAiMode] = useState('text'); // 'text' or 'image'
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiCategory, setAiCategory] = useState('Safety');
+  const [aiImageBase64, setAiImageBase64] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedTemplate, setGeneratedTemplate] = useState(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const aiImageInputRef = useRef(null);
+
   const handleDeleteTemplate = async () => {
     if (!templateToDelete) return;
 
@@ -38,6 +56,103 @@ export default function Templates() {
       setTemplateToDelete(null);
     } catch (error) {
       toast.error(error.message || 'Failed to delete template');
+    }
+  };
+
+  // Handle AI image upload
+  const handleAiImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image must be smaller than 10MB');
+      return;
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setAiImageBase64(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Generate template from AI
+  const handleAiGenerate = async () => {
+    if (aiMode === 'text' && !aiPrompt.trim()) {
+      toast.error('Please describe the audit template you want to create');
+      return;
+    }
+    if (aiMode === 'image' && !aiImageBase64) {
+      toast.error('Please upload an image of a paper form');
+      return;
+    }
+
+    setIsGenerating(true);
+    setGeneratedTemplate(null);
+
+    try {
+      let response;
+      if (aiMode === 'text') {
+        response = await aiApi.generateTemplate(aiPrompt, aiCategory);
+      } else {
+        response = await aiApi.imageToTemplate(aiImageBase64);
+      }
+
+      if (response.success && response.data) {
+        setGeneratedTemplate(response.data);
+        setShowPreviewModal(true);
+        toast.success('Template generated! Review and save it.');
+      } else {
+        throw new Error(response.error || 'Failed to generate template');
+      }
+    } catch (error) {
+      console.error('AI generation error:', error);
+      toast.error(error.message || 'Failed to generate template');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Save the generated template
+  const handleSaveGeneratedTemplate = async () => {
+    if (!generatedTemplate) return;
+
+    try {
+      await createTemplate({
+        ...generatedTemplate,
+        category: generatedTemplate.category || aiCategory,
+        color: generatedTemplate.color || '#FF9900',
+        estimatedTime: generatedTemplate.estimatedTime || 15,
+        isDefault: false,
+      });
+      toast.success('Template saved successfully!');
+      setShowPreviewModal(false);
+      setShowNewTemplateModal(false);
+      setGeneratedTemplate(null);
+      setAiPrompt('');
+      setAiImageBase64(null);
+    } catch (error) {
+      toast.error(error.message || 'Failed to save template');
+    }
+  };
+
+  // Reset AI generation state
+  const resetAiGeneration = () => {
+    setAiPrompt('');
+    setAiImageBase64(null);
+    setGeneratedTemplate(null);
+    setAiMode('text');
+    setAiCategory('Safety');
+    if (aiImageInputRef.current) {
+      aiImageInputRef.current.value = '';
     }
   };
 
@@ -312,47 +427,174 @@ export default function Templates() {
         </Card>
       )}
 
-      {/* New Template Modal */}
+      {/* New Template Modal - AI Powered */}
       <Modal
         isOpen={showNewTemplateModal}
-        onClose={() => setShowNewTemplateModal(false)}
+        onClose={() => {
+          setShowNewTemplateModal(false);
+          resetAiGeneration();
+        }}
         title="Create New Template"
         size="lg"
       >
-        <div className="space-y-4">
-          <p className="text-slate-500 dark:text-slate-400">
-            Template creation is coming soon. For now, you can import templates using JSON format.
-          </p>
-          <div className="bg-slate-100 dark:bg-slate-900 rounded-xl p-4">
-            <p className="text-sm font-mono text-slate-600 dark:text-slate-400 mb-3">
-              Example template structure:
-            </p>
-            <pre className="text-xs text-slate-600 dark:text-slate-400 overflow-x-auto">
-{`{
-  "title": "My Custom Audit",
-  "description": "Description here",
-  "category": "Safety",
-  "color": "#FF9900",
-  "estimatedTime": 15,
-  "sections": [{
-    "id": "sec-1",
-    "title": "Section Name",
-    "items": [{
-      "id": "q1",
-      "text": "Question text?",
-      "type": "bool",
-      "required": true
-    }]
-  }]
-}`}
-            </pre>
+        <div className="space-y-5">
+          {/* AI Badge */}
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-200 dark:border-purple-800">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+              <Sparkles size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">AI-Powered Generation</p>
+              <p className="text-xs text-purple-600 dark:text-purple-400">Describe your audit or upload a paper form</p>
+            </div>
           </div>
+
+          {/* Mode Toggle */}
           <div className="flex gap-2">
+            <button
+              onClick={() => setAiMode('text')}
+              className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+                aiMode === 'text'
+                  ? 'bg-amazon-orange text-white shadow-lg shadow-amazon-orange/30'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+              }`}
+            >
+              <Wand2 size={18} />
+              Text to Template
+            </button>
+            <button
+              onClick={() => setAiMode('image')}
+              className={`flex-1 py-3 px-4 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
+                aiMode === 'image'
+                  ? 'bg-amazon-orange text-white shadow-lg shadow-amazon-orange/30'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+              }`}
+            >
+              <Image size={18} />
+              Image to Template
+            </button>
+          </div>
+
+          {/* Text Mode */}
+          {aiMode === 'text' && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                  Describe your audit template
+                </label>
+                <textarea
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="e.g., Create a 5S audit for a delivery station loading dock with sections for Sort, Set in Order, Shine, Standardize, and Sustain..."
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 border-none resize-none focus:ring-2 focus:ring-amazon-orange/50 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                  Category
+                </label>
+                <div className="flex gap-2">
+                  {['Safety', 'Quality', 'Compliance', 'Operations'].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setAiCategory(cat)}
+                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                        aiCategory === cat
+                          ? 'bg-amazon-orange text-white'
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Example prompts */}
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="font-medium mb-1">Example prompts:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li className="cursor-pointer hover:text-amazon-orange" onClick={() => setAiPrompt('Create a fire safety audit for a warehouse with sections for fire extinguishers, emergency exits, electrical safety, and hazardous materials storage.')}>Fire safety audit for warehouse</li>
+                  <li className="cursor-pointer hover:text-amazon-orange" onClick={() => setAiPrompt('Create a PPE compliance audit for delivery drivers checking safety vests, proper footwear, and vehicle safety equipment.')}>PPE compliance for delivery drivers</li>
+                  <li className="cursor-pointer hover:text-amazon-orange" onClick={() => setAiPrompt('Create a 5S workplace organization audit for an indoor sorting area including Sort, Set in Order, Shine, Standardize, and Sustain.')}>5S audit for sorting area</li>
+                </ul>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Image Mode */}
+          {aiMode === 'image' && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              <input
+                type="file"
+                ref={aiImageInputRef}
+                onChange={handleAiImageUpload}
+                accept="image/*"
+                className="hidden"
+              />
+
+              {!aiImageBase64 ? (
+                <button
+                  onClick={() => aiImageInputRef.current?.click()}
+                  className="w-full py-12 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-amazon-orange hover:bg-amazon-orange/5 transition-all flex flex-col items-center gap-3"
+                >
+                  <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                    <Camera size={32} className="text-slate-400" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-medium text-slate-700 dark:text-slate-300">Upload paper form image</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">JPG, PNG, or PDF - Max 10MB</p>
+                  </div>
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <div className="relative rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+                    <img
+                      src={aiImageBase64}
+                      alt="Uploaded form"
+                      className="w-full max-h-64 object-contain"
+                    />
+                    <button
+                      onClick={() => {
+                        setAiImageBase64(null);
+                        if (aiImageInputRef.current) aiImageInputRef.current.value = '';
+                      }}
+                      className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-lg flex items-center justify-center shadow-lg"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <p className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                    <CheckCircle size={16} />
+                    Image uploaded - Ready to extract template
+                  </p>
+                </div>
+              )}
+
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Upload a photo of a paper checklist, audit form, or inspection sheet. The AI will extract the structure and questions automatically.
+              </p>
+            </motion.div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 pt-2">
             <Button
               variant="secondary"
               icon={Upload}
               onClick={() => {
                 setShowNewTemplateModal(false);
+                resetAiGeneration();
                 fileInputRef.current?.click();
               }}
               className="flex-1"
@@ -360,14 +602,104 @@ export default function Templates() {
               Import JSON
             </Button>
             <Button
-              variant="secondary"
-              onClick={() => setShowNewTemplateModal(false)}
-              className="flex-1"
+              variant="primary"
+              icon={isGenerating ? Loader2 : Sparkles}
+              onClick={handleAiGenerate}
+              disabled={isGenerating || (aiMode === 'text' && !aiPrompt.trim()) || (aiMode === 'image' && !aiImageBase64)}
+              className={`flex-1 ${isGenerating ? '' : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'}`}
             >
-              Close
+              {isGenerating ? 'Generating...' : 'Generate Template'}
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Template Preview Modal */}
+      <Modal
+        isOpen={showPreviewModal}
+        onClose={() => {
+          setShowPreviewModal(false);
+          setGeneratedTemplate(null);
+        }}
+        title="Generated Template Preview"
+        size="lg"
+      >
+        {generatedTemplate && (
+          <div className="space-y-4">
+            {/* Template Header */}
+            <div className="p-4 rounded-xl bg-gradient-to-r from-amazon-orange/10 to-amazon-teal/10 border border-amazon-orange/20">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                {generatedTemplate.title}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                {generatedTemplate.description}
+              </p>
+              <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
+                <span className={`px-2 py-1 rounded-full ${getCategoryColor(generatedTemplate.category)}`}>
+                  {generatedTemplate.category}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock size={12} />
+                  ~{generatedTemplate.estimatedTime} min
+                </span>
+                <span className="flex items-center gap-1">
+                  <FileText size={12} />
+                  {generatedTemplate.sections?.length} sections
+                </span>
+              </div>
+            </div>
+
+            {/* Sections Preview */}
+            <div className="max-h-80 overflow-y-auto space-y-3">
+              {generatedTemplate.sections?.map((section, idx) => (
+                <div key={section.id || idx} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  <h4 className="font-semibold text-slate-800 dark:text-slate-200 mb-2">
+                    {idx + 1}. {section.title}
+                  </h4>
+                  <ul className="space-y-1">
+                    {section.items?.map((item, iIdx) => (
+                      <li key={item.id || iIdx} className="text-sm text-slate-600 dark:text-slate-400 flex items-start gap-2">
+                        <span className="text-amazon-orange">-</span>
+                        <span>
+                          {item.text}
+                          {item.critical && (
+                            <span className="ml-2 px-1.5 py-0.5 text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded">
+                              Critical
+                            </span>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="secondary"
+                icon={RefreshCw}
+                onClick={() => {
+                  setShowPreviewModal(false);
+                  handleAiGenerate();
+                }}
+                disabled={isGenerating}
+                className="flex-1"
+              >
+                Regenerate
+              </Button>
+              <Button
+                variant="primary"
+                icon={CheckCircle}
+                onClick={handleSaveGeneratedTemplate}
+                className="flex-1"
+              >
+                Save Template
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* Import Results Modal */}
