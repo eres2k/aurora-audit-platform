@@ -273,20 +273,18 @@ export default function Templates() {
               </div>
 
               <div className="flex gap-2 pt-4 border-t border-slate-100 dark:border-slate-700">
-                {!template.isDefault && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setTemplateToDelete(template);
-                      setShowDeleteModal(true);
-                    }}
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
-                    <Trash2 size={16} />
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTemplateToDelete(template);
+                    setShowDeleteModal(true);
+                  }}
+                  className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  <Trash2 size={16} />
+                </Button>
                 <Button
                   variant="primary"
                   size="sm"
