@@ -428,13 +428,26 @@ export default function QuestionItem({
                 <label className="text-xs font-bold text-red-600 uppercase mb-2 block">
                   Describe the issue
                 </label>
-                <textarea
-                  value={note || ''}
-                  onChange={(e) => onNoteChange && onNoteChange(e.target.value)}
-                  placeholder="Describe the problem..."
-                  rows={2}
-                  className="w-full text-sm p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 placeholder:text-red-300 dark:placeholder:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
-                />
+                <div className="relative">
+                  <textarea
+                    value={note || ''}
+                    onChange={(e) => onNoteChange && onNoteChange(e.target.value)}
+                    placeholder="Describe the problem..."
+                    rows={2}
+                    className="w-full text-sm p-3 pr-12 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 placeholder:text-red-300 dark:placeholder:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
+                  />
+                  {/* Microphone button for voice input */}
+                  {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
+                    <motion.button
+                      whileTap={{ scale: 0.9 }}
+                      onClick={startRecording}
+                      className="absolute right-2 top-2 w-8 h-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center shadow-sm transition-colors"
+                      title="Voice input"
+                    >
+                      <Mic size={16} />
+                    </motion.button>
+                  )}
+                </div>
               </div>
             )}
 
@@ -683,12 +696,12 @@ export default function QuestionItem({
 
             {/* Action buttons row */}
             <div className="mt-4 flex flex-wrap gap-2">
-              {/* Voice Input button */}
+              {/* Voice Input button - prominent mic icon */}
               {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={startRecording}
-                  className="flex-1 min-w-[120px] py-2.5 px-4 rounded-xl border-2 border-dashed border-indigo-300 dark:border-indigo-600 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all flex items-center justify-center gap-2 text-sm font-medium text-indigo-600 dark:text-indigo-400"
+                  className="flex-1 min-w-[120px] py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 transition-all flex items-center justify-center gap-2 text-sm font-medium text-white shadow-md shadow-indigo-500/30"
                 >
                   <Mic size={18} />
                   <span>Voice Note</span>

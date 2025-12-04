@@ -447,6 +447,73 @@ Guidelines:
   }
 };
 
+// Generate detailed PDF insights for export
+const handleGeneratePDFInsights = async (audit, template) => {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const auditText = auditToReadableText(audit, template);
+
+  const prompt = `You are a professional safety auditor creating detailed insights for an audit report PDF.
+
+Based on the following audit data, generate comprehensive insights suitable for a formal audit report:
+
+${auditText}
+
+Return a JSON object with the following structure:
+{
+  "summary": "A detailed 3-4 sentence executive summary of the audit findings, including the overall score interpretation and key takeaways. This should be written professionally for management review.",
+  "keyFindings": [
+    "Detailed finding 1 with specific observations",
+    "Detailed finding 2 with context",
+    "Up to 5 most important findings from the audit"
+  ],
+  "recommendations": [
+    "Specific, actionable recommendation 1",
+    "Specific, actionable recommendation 2",
+    "Up to 5 prioritized recommendations for improvement"
+  ],
+  "riskAreas": [
+    "Risk area 1 that needs attention",
+    "Risk area 2 with potential safety implications",
+    "Up to 4 areas of concern identified in the audit"
+  ],
+  "strengths": [
+    "Positive finding or area of strength 1",
+    "Positive finding or area of strength 2"
+  ],
+  "complianceStatus": "Compliant" | "Partially Compliant" | "Non-Compliant",
+  "priorityLevel": "Low" | "Medium" | "High" | "Critical"
+}
+
+Guidelines:
+- Be specific and reference actual items from the audit
+- Focus on safety-critical issues first
+- Write in a formal, professional tone suitable for management reports
+- If score is high (>80%), emphasize positive findings while noting areas for improvement
+- If score is low (<60%), emphasize areas of concern and critical recommendations
+- Make recommendations actionable with clear next steps
+- Consider both immediate actions and long-term improvements`;
+
+  const result = await model.generateContent(prompt);
+  const response = result.response;
+  const text = response.text();
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    throw new Error('Failed to parse AI response as JSON');
+  }
+};
+
 // Analyze image for safety compliance
 const handleAnalyzeImage = async (imageBase64, question) => {
   const model = genAI.getGenerativeModel({
@@ -589,6 +656,13 @@ export const handler = async (event, context) => {
           return jsonResponse({ error: 'Question is required for policy chat' }, 400);
         }
         result = await handlePolicyChat(question, conversationHistory);
+        break;
+
+      case 'generate_pdf_insights':
+        if (!audit) {
+          return jsonResponse({ error: 'Audit data is required for PDF insights' }, 400);
+        }
+        result = await handleGeneratePDFInsights(audit, template);
         break;
 
       default:
