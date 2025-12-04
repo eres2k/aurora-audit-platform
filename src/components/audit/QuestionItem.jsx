@@ -27,19 +27,19 @@ export default function QuestionItem({
     owner: null,
   });
 
-  // AI Analysis state
+  // Safety Analysis state
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [safetyAnalysis, setSafetyAnalysis] = useState(null);
 
-  // Handle AI image analysis
-  const handleAiAnalyze = async () => {
+  // Handle safety image analysis
+  const handleAnalyze = async () => {
     if (!photos || photos.length === 0) {
       toast.error('No photo available to analyze');
       return;
     }
 
     setIsAnalyzing(true);
-    setAiAnalysis(null);
+    setSafetyAnalysis(null);
 
     try {
       // Use the first/most recent photo for analysis
@@ -48,38 +48,38 @@ export default function QuestionItem({
 
       if (response.success && response.data) {
         const analysis = response.data;
-        setAiAnalysis(analysis);
+        setSafetyAnalysis(analysis);
 
         // If hazard detected with high severity, auto-suggest fail and update notes
         if (analysis.hazardDetected) {
           if (analysis.severity === 'high' && value !== 'fail') {
             // Suggest changing to fail for high severity hazards
             onChange('fail');
-            toast('AI detected a high-severity hazard. Status changed to Fail.', {
+            toast('High-severity hazard detected. Status changed to Fail.', {
               icon: '⚠️',
               duration: 4000,
             });
           } else if (analysis.severity === 'medium') {
-            toast('AI detected a medium-severity hazard. Review recommended.', {
+            toast('Medium-severity hazard detected. Review recommended.', {
               icon: '⚠️',
               duration: 4000,
             });
           }
 
-          // Auto-fill notes with AI description
+          // Auto-fill notes with analysis description
           if (onNoteChange && analysis.description) {
-            const aiNote = `[AI Analysis] ${analysis.description}${analysis.recommendation ? `\n\nRecommendation: ${analysis.recommendation}` : ''}`;
+            const aiNote = `[Safety Analysis] ${analysis.description}${analysis.recommendation ? `\n\nRecommendation: ${analysis.recommendation}` : ''}`;
             onNoteChange(aiNote);
           }
         } else {
-          toast.success('AI analysis complete - No hazards detected');
+          toast.success('Analysis complete - No hazards detected');
         }
       } else {
         throw new Error(response.error || 'Failed to analyze image');
       }
     } catch (error) {
-      console.error('AI analysis error:', error);
-      toast.error(error.message || 'Failed to analyze image with AI');
+      console.error('Analysis error:', error);
+      toast.error(error.message || 'Failed to analyze image');
     } finally {
       setIsAnalyzing(false);
     }
@@ -324,18 +324,18 @@ export default function QuestionItem({
               </div>
             )}
 
-            {/* AI Analysis Results */}
+            {/* Safety Analysis Results */}
             <AnimatePresence>
-              {aiAnalysis && (
+              {safetyAnalysis && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   className={`mt-4 p-4 rounded-xl border-2 ${
-                    aiAnalysis.hazardDetected
-                      ? aiAnalysis.severity === 'high'
+                    safetyAnalysis.hazardDetected
+                      ? safetyAnalysis.severity === 'high'
                         ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'
-                        : aiAnalysis.severity === 'medium'
+                        : safetyAnalysis.severity === 'medium'
                         ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700'
                         : 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
                       : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700'
@@ -343,10 +343,10 @@ export default function QuestionItem({
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      {aiAnalysis.hazardDetected ? (
+                      {safetyAnalysis.hazardDetected ? (
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                          aiAnalysis.severity === 'high' ? 'bg-red-500' :
-                          aiAnalysis.severity === 'medium' ? 'bg-amber-500' : 'bg-blue-500'
+                          safetyAnalysis.severity === 'high' ? 'bg-red-500' :
+                          safetyAnalysis.severity === 'medium' ? 'bg-amber-500' : 'bg-blue-500'
                         }`}>
                           <Shield size={16} className="text-white" />
                         </div>
@@ -358,58 +358,58 @@ export default function QuestionItem({
                       <div>
                         <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1">
                           <Sparkles size={12} />
-                          AI Safety Analysis
+                          Safety Analysis
                         </p>
                         <p className={`text-sm font-semibold ${
-                          aiAnalysis.hazardDetected
-                            ? aiAnalysis.severity === 'high' ? 'text-red-700 dark:text-red-300' :
-                              aiAnalysis.severity === 'medium' ? 'text-amber-700 dark:text-amber-300' :
+                          safetyAnalysis.hazardDetected
+                            ? safetyAnalysis.severity === 'high' ? 'text-red-700 dark:text-red-300' :
+                              safetyAnalysis.severity === 'medium' ? 'text-amber-700 dark:text-amber-300' :
                               'text-blue-700 dark:text-blue-300'
                             : 'text-emerald-700 dark:text-emerald-300'
                         }`}>
-                          {aiAnalysis.hazardDetected
-                            ? `Hazard Detected - ${aiAnalysis.severity?.toUpperCase()} Severity`
+                          {safetyAnalysis.hazardDetected
+                            ? `Hazard Detected - ${safetyAnalysis.severity?.toUpperCase()} Severity`
                             : 'No Hazards Detected'}
                         </p>
                       </div>
                     </div>
                     <button
-                      onClick={() => setAiAnalysis(null)}
+                      onClick={() => setSafetyAnalysis(null)}
                       className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                     >
                       <XCircle size={18} />
                     </button>
                   </div>
 
-                  {aiAnalysis.description && (
+                  {safetyAnalysis.description && (
                     <p className="mt-3 text-sm text-slate-700 dark:text-slate-300">
-                      {aiAnalysis.description}
+                      {safetyAnalysis.description}
                     </p>
                   )}
 
-                  {aiAnalysis.recommendation && (
+                  {safetyAnalysis.recommendation && (
                     <div className="mt-3 p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
                       <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
                         Recommendation
                       </p>
                       <p className="text-sm text-slate-700 dark:text-slate-300">
-                        {aiAnalysis.recommendation}
+                        {safetyAnalysis.recommendation}
                       </p>
                     </div>
                   )}
 
                   <div className="mt-3 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                     <span className={`px-2 py-0.5 rounded-full ${
-                      aiAnalysis.complianceStatus === 'compliant'
+                      safetyAnalysis.complianceStatus === 'compliant'
                         ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
-                        : aiAnalysis.complianceStatus === 'non-compliant'
+                        : safetyAnalysis.complianceStatus === 'non-compliant'
                         ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
                         : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
                     }`}>
-                      {aiAnalysis.complianceStatus?.replace('-', ' ')}
+                      {safetyAnalysis.complianceStatus?.replace('-', ' ')}
                     </span>
                     <span className="text-slate-300 dark:text-slate-600">|</span>
-                    <span>Confidence: {aiAnalysis.confidence}</span>
+                    <span>Confidence: {safetyAnalysis.confidence}</span>
                   </div>
                 </motion.div>
               )}
@@ -429,17 +429,17 @@ export default function QuestionItem({
                 </motion.button>
               )}
 
-              {/* AI Analyze button - only visible if photo exists */}
+              {/* Analyze button - only visible if photo exists */}
               {photos && photos.length > 0 && (
                 <motion.button
                   whileTap={{ scale: 0.95 }}
-                  onClick={handleAiAnalyze}
+                  onClick={handleAnalyze}
                   disabled={isAnalyzing}
                   className={`flex-1 min-w-[120px] py-2.5 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 text-sm font-medium ${
                     isAnalyzing
                       ? 'border-purple-400 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 cursor-wait'
-                      : aiAnalysis
-                      ? aiAnalysis.hazardDetected
+                      : safetyAnalysis
+                      ? safetyAnalysis.hazardDetected
                         ? 'border-red-400 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100'
                         : 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100'
                       : 'border-dashed border-purple-300 dark:border-purple-600 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 text-purple-600 dark:text-purple-400'
@@ -453,7 +453,7 @@ export default function QuestionItem({
                   ) : (
                     <>
                       <Sparkles size={18} />
-                      <span>AI Analyze</span>
+                      <span>Analyze</span>
                     </>
                   )}
                 </motion.button>

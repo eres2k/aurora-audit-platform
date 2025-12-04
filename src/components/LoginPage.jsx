@@ -21,7 +21,7 @@ const features = [
 const highlights = [
   'Multi-station audit management',
   'Real-time compliance tracking',
-  'AI-powered recommendations',
+  'Smart insights & recommendations',
   'Customizable audit templates',
   'Digital signatures & photos',
   'Offline support',
@@ -52,9 +52,9 @@ export default function LoginPage() {
           </div>
           <div>
             <h1 className="font-display font-bold text-2xl text-white">
-              AuditFlow Pro
+              AuditHub
             </h1>
-            <p className="text-sm text-slate-400">Amazon Logistics</p>
+            <p className="text-sm text-slate-400">Safety Audits</p>
           </div>
         </motion.div>
 

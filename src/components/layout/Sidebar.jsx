@@ -44,9 +44,9 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
         <div>
           <h1 className="font-display font-bold text-lg text-slate-900 dark:text-white">
-            AuditFlow
+            AuditHub
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Pro Edition</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Safety Audits</p>
         </div>
       </div>
 

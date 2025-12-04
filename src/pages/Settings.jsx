@@ -36,7 +36,7 @@ export default function Settings() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `auditflow_backup_${new Date().toISOString().split('T')[0]}.json`);
+    downloadAnchorNode.setAttribute("download", `audithub_backup_${new Date().toISOString().split('T')[0]}.json`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -235,7 +235,7 @@ export default function Settings() {
 
       {/* App Info */}
       <div className="text-center text-sm text-slate-400 dark:text-slate-500 pb-6">
-        <p>AuditFlow Pro v2.0.0</p>
+        <p>AuditHub v2.0.0</p>
         <p className="mt-1">Powered by Netlify</p>
       </div>
 
