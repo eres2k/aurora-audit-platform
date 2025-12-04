@@ -15,7 +15,7 @@ import {
 import toast from 'react-hot-toast';
 import { aiApi } from '../../utils/api';
 
-export default function PolicyChatbot({ isOpen, onClose }) {
+export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -28,6 +28,7 @@ export default function PolicyChatbot({ isOpen, onClose }) {
       ],
     },
   ]);
+  const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
@@ -42,6 +43,67 @@ export default function PolicyChatbot({ isOpen, onClose }) {
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isOpen]);
+
+  // Process initial message when provided
+  useEffect(() => {
+    if (isOpen && initialMessage && !hasProcessedInitialMessage) {
+      setHasProcessedInitialMessage(true);
+      // Automatically send the initial message
+      const sendInitialMessage = async () => {
+        setMessages(prev => [...prev, { role: 'user', content: initialMessage }]);
+        setIsLoading(true);
+
+        try {
+          const conversationHistory = messages.slice(-6).map(m => ({
+            role: m.role,
+            content: m.content,
+          }));
+
+          const response = await aiApi.policyChat(initialMessage, conversationHistory);
+
+          if (response.success && response.data) {
+            const { answer, sources, relatedTopics, confidence, disclaimer } = response.data;
+
+            setMessages(prev => [
+              ...prev,
+              {
+                role: 'assistant',
+                content: answer,
+                sources: sources || [],
+                relatedTopics: relatedTopics || [],
+                confidence,
+                disclaimer,
+              },
+            ]);
+          } else {
+            throw new Error(response.error || 'Failed to get response');
+          }
+        } catch (error) {
+          console.error('Policy chat error:', error);
+          setMessages(prev => [
+            ...prev,
+            {
+              role: 'assistant',
+              content: 'I apologize, but I encountered an error processing your question. Please try again or rephrase your question.',
+              sources: [],
+              relatedTopics: [],
+            },
+          ]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      sendInitialMessage();
+    }
+  }, [isOpen, initialMessage, hasProcessedInitialMessage, messages]);
+
+  // Reset when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setHasProcessedInitialMessage(false);
     }
   }, [isOpen]);
 
@@ -135,7 +197,6 @@ export default function PolicyChatbot({ isOpen, onClose }) {
                 <div>
                   <h2 className="font-semibold text-white flex items-center gap-2">
                     Policy Assistant
-                    <span className="text-xs px-2 py-0.5 bg-white/20 rounded-full">AI</span>
                   </h2>
                   <p className="text-xs text-white/80">Austrian ASchG & OSHA Guidelines</p>
                 </div>
@@ -169,7 +230,7 @@ export default function PolicyChatbot({ isOpen, onClose }) {
                     <div className="px-4 pt-3 pb-1 flex items-center gap-2">
                       <Sparkles size={14} className="text-teal-500" />
                       <span className="text-xs font-medium text-teal-600 dark:text-teal-400">
-                        AuditHub AI
+                        AuditHub
                       </span>
                       {message.confidence && (
                         <span className={`text-xs px-1.5 py-0.5 rounded-full ${

@@ -76,9 +76,9 @@ export default function AuditDetail() {
     try {
       let pdfInsights = null;
 
-      // Generate AI insights if requested
+      // Generate insights if requested
       if (includeAIInsights) {
-        toast.loading('Generating AI insights...', { id: 'pdf-export' });
+        toast.loading('Generating insights...', { id: 'pdf-export' });
         const response = await aiApi.generatePDFInsights(audit, template);
         if (response.success && response.data) {
           pdfInsights = response.data;
@@ -237,11 +237,11 @@ export default function AuditDetail() {
                     <div className="flex items-center gap-2">
                       <Sparkles size={18} className="text-purple-500" />
                       <span className="font-medium text-slate-900 dark:text-white">
-                        Include AI Audit Insights
+                        Include Audit Insights
                       </span>
                     </div>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                      Add AI-generated summary, findings, recommendations, and risk analysis to your report
+                      Add generated summary, findings, recommendations, and risk analysis to your report
                     </p>
                   </div>
                 </label>

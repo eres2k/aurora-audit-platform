@@ -438,13 +438,13 @@ export default function Templates() {
         size="lg"
       >
         <div className="space-y-5">
-          {/* AI Badge */}
+          {/* Smart Generation Badge */}
           <div className="flex items-center gap-2 p-3 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-200 dark:border-purple-800">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
               <Sparkles size={16} className="text-white" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">AI-Powered Generation</p>
+              <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">Smart Generation</p>
               <p className="text-xs text-purple-600 dark:text-purple-400">Describe your audit or upload a paper form</p>
             </div>
           </div>
@@ -582,7 +582,7 @@ export default function Templates() {
               )}
 
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Upload a photo of a paper checklist, audit form, or inspection sheet. The AI will extract the structure and questions automatically.
+                Upload a photo of a paper checklist, audit form, or inspection sheet. The structure and questions will be extracted automatically.
               </p>
             </motion.div>
           )}
