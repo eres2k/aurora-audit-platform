@@ -2,7 +2,7 @@
 // This function returns the authenticated user's information
 // including their assigned stations
 
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   // Get the user from the Netlify Identity context
   const { user } = context.clientContext;
 

@@ -1,5 +1,5 @@
 // Netlify Function for actions CRUD operations using Netlify Blobs
-const { getStore } = require('@netlify/blobs');
+import { getStore } from '@netlify/blobs';
 
 // CORS headers
 const headers = {
@@ -9,7 +9,7 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
   // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers, body: '' };
