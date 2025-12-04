@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronUp,
   X,
+  Hash,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAudits } from '../context/AuditContext';
@@ -157,6 +158,12 @@ export default function AuditDetail() {
             onClick={() => navigate('/audits')}
           />
           <div>
+            <div className="flex items-center gap-3 mb-1">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amazon-teal/10 text-amazon-teal text-sm font-bold">
+                <Hash size={16} />
+                {audit.shortId || audit.id.slice(-8).toUpperCase()}
+              </span>
+            </div>
             <h1 className="text-2xl md:text-3xl font-display font-bold text-slate-900 dark:text-white">
               {audit.templateTitle || 'Audit Report'}
             </h1>
