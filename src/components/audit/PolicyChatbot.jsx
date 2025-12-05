@@ -14,25 +14,35 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { aiApi } from '../../utils/api';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: 'Hello! I\'m the AuditHub Policy Assistant. I can help you with questions about Austrian workplace safety regulations (ASchG), OSHA standards, and general safety compliance. What would you like to know?',
-      sources: [],
-      relatedTopics: [
-        'Walkway clearance requirements',
-        'Fire extinguisher placement',
-        'PPE requirements',
-      ],
-    },
-  ]);
+  const { t } = useLanguage();
+
+  const [messages, setMessages] = useState([]);
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Initialize messages with translated greeting when component mounts or language changes
+  useEffect(() => {
+    if (messages.length === 0 || (messages.length === 1 && messages[0].role === 'assistant')) {
+      setMessages([
+        {
+          role: 'assistant',
+          content: t('policyGreeting'),
+          sources: [],
+          relatedTopics: [
+            t('walkwayClearanceRequirements'),
+            t('fireExtinguisherPlacement'),
+            t('ppeRequirements'),
+          ],
+        },
+      ]);
+    }
+  }, [t]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -86,7 +96,7 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
             ...prev,
             {
               role: 'assistant',
-              content: 'I apologize, but I encountered an error processing your question. Please try again or rephrase your question.',
+              content: t('policyErrorMessage'),
               sources: [],
               relatedTopics: [],
             },
@@ -98,7 +108,7 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
 
       sendInitialMessage();
     }
-  }, [isOpen, initialMessage, hasProcessedInitialMessage, messages]);
+  }, [isOpen, initialMessage, hasProcessedInitialMessage, messages, t]);
 
   // Reset when modal closes
   useEffect(() => {
@@ -147,12 +157,12 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
         ...prev,
         {
           role: 'assistant',
-          content: 'I apologize, but I encountered an error processing your question. Please try again or rephrase your question.',
+          content: t('policyErrorMessage'),
           sources: [],
           relatedTopics: [],
         },
       ]);
-      toast.error('Failed to get response');
+      toast.error(t('policyErrorToast'));
     } finally {
       setIsLoading(false);
     }
@@ -196,9 +206,9 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
                 </div>
                 <div>
                   <h2 className="font-semibold text-white flex items-center gap-2">
-                    Policy Assistant
+                    {t('policyAssistant')}
                   </h2>
-                  <p className="text-xs text-white/80">Austrian ASchG & OSHA Guidelines</p>
+                  <p className="text-xs text-white/80">{t('policySubtitle')}</p>
                 </div>
               </div>
               <button
@@ -240,7 +250,7 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
                             ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
                             : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'
                         }`}>
-                          {message.confidence} confidence
+                          {t(`confidence${message.confidence.charAt(0).toUpperCase() + message.confidence.slice(1)}`)}
                         </span>
                       )}
                     </div>
@@ -258,7 +268,7 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
                       <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
                         <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
                           <BookOpen size={12} />
-                          Sources
+                          {t('sources')}
                         </p>
                         <div className="flex flex-wrap gap-1">
                           {message.sources.map((source, i) => (
@@ -277,7 +287,7 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
                     {message.relatedTopics && message.relatedTopics.length > 0 && (
                       <div className="mt-3">
                         <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
-                          Related topics:
+                          {t('relatedTopics')}:
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {message.relatedTopics.map((topic, i) => (
@@ -318,7 +328,7 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
                   <div className="flex items-center gap-2">
                     <Loader2 size={16} className="animate-spin text-teal-500" />
                     <span className="text-sm text-slate-500 dark:text-slate-400">
-                      Searching regulations...
+                      {t('searchingRegulations')}
                     </span>
                   </div>
                 </div>
@@ -332,14 +342,14 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
           {messages.length <= 1 && (
             <div className="px-4 pb-2">
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
-                Common questions:
+                {t('commonQuestions')}:
               </p>
               <div className="flex flex-wrap gap-2">
                 {[
-                  'What is the minimum walkway width?',
-                  'Fire extinguisher placement rules?',
-                  'Maximum lifting weight?',
-                  'Emergency exit requirements?',
+                  t('questionWalkwayWidth'),
+                  t('questionFireExtinguisher'),
+                  t('questionLiftingWeight'),
+                  t('questionEmergencyExit'),
                 ].map((q, i) => (
                   <button
                     key={i}
@@ -364,7 +374,7 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Ask about safety regulations..."
+                  placeholder={t('askAboutRegulations')}
                   disabled={isLoading}
                   className="w-full px-4 py-3 pr-12 rounded-xl bg-slate-100 dark:bg-slate-700 border-none focus:ring-2 focus:ring-teal-500/50 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none text-sm"
                 />

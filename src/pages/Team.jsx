@@ -53,18 +53,18 @@ const DEFAULT_TEAM_MEMBERS = [
 ];
 
 export default function Team() {
-  const { user, selectedStation } = useAuth();
+  const { user, selectedStation, userRole, isAdmin } = useAuth();
   const [teamMembers, setTeamMembers] = useState([]);
   const [registeredUsers, setRegisteredUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ open: false, member: null });
 
-  // Current user is always an admin
+  // Current user member with actual role from context
   const currentUserMember = {
     id: 'current-user',
     name: user?.user_metadata?.full_name || 'Current User',
     email: user?.email || 'user@example.com',
-    role: 'Admin',
+    role: userRole || user?.app_metadata?.role || 'Admin',
     station: selectedStation || 'DVI1',
     auditsCompleted: 24,
     avatar: null,
@@ -118,8 +118,7 @@ export default function Team() {
     localStorage.setItem('teamMembers', JSON.stringify(customMembers));
   };
 
-  // Check if current user is admin
-  const isAdmin = teamMembers.find(m => m.isCurrentUser)?.role === 'Admin';
+  // Use isAdmin from context (already imported)
 
   // Delete team member
   const handleDeleteMember = (member) => {
