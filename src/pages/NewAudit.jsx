@@ -22,9 +22,19 @@ import { Button, Card, Progress, Badge } from '../components/ui';
 import { QuestionItem, SignaturePad, ScoreDisplay, PhotoCapture } from '../components/audit';
 import { aiApi } from '../utils/api';
 
-// Check if Web Speech API is available
-const isSpeechRecognitionSupported = () => {
-  return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+// Check if MediaRecorder API is available (for server-side transcription)
+const isMediaRecorderSupported = () => {
+  return typeof MediaRecorder !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+};
+
+// Helper to convert audio blob to base64
+const blobToBase64 = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };
 
 export default function NewAudit() {
@@ -52,11 +62,15 @@ export default function NewAudit() {
   const [finalScore, setFinalScore] = useState(null);
   const [auditActions, setAuditActions] = useState([]); // Actions created during this audit
 
-  // Voice Recording state for global notes
+  // Voice Recording state for global notes (server-side transcription)
   const [isRecordingNotes, setIsRecordingNotes] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [notesTranscript, setNotesTranscript] = useState('');
-  const recognitionRef = useRef(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const streamRef = useRef(null);
+  const recordingTimerRef = useRef(null);
 
   // Load existing audit if continuing
   useEffect(() => {
@@ -92,114 +106,201 @@ export default function NewAudit() {
     }
   }, [templateIdFromUrl, templates, auditIdFromUrl]);
 
-  // Initialize speech recognition for global notes
+  // Cleanup MediaRecorder on unmount
   useEffect(() => {
-    if (isSpeechRecognitionSupported()) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onresult = (event) => {
-        let finalTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const result = event.results[i];
-          if (result.isFinal) {
-            finalTranscript += result[0].transcript;
-          }
-        }
-        setNotesTranscript(prev => prev + finalTranscript);
-      };
-
-      recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        setIsRecordingNotes(false);
-        if (event.error === 'not-allowed') {
-          toast.error('Microphone access denied. Please allow microphone access.');
-        } else if (event.error !== 'aborted') {
-          toast.error('Voice recognition error. Please try again.');
-        }
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsRecordingNotes(false);
-      };
-    }
-
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
+      // Cleanup media recorder and stream
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
       }
     };
   }, []);
 
-  // Start voice recording for notes
-  const startNotesRecording = () => {
-    if (!isSpeechRecognitionSupported()) {
-      toast.error('Voice input is not supported in this browser. Try Chrome.');
+  // Format recording duration as mm:ss
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Start voice recording for notes using MediaRecorder (server-side transcription)
+  const startNotesRecording = async () => {
+    if (!isMediaRecorderSupported()) {
+      toast.error('Voice recording is not supported in this browser.');
       return;
     }
 
     setNotesTranscript('');
-    setIsRecordingNotes(true);
+    setRecordingDuration(0);
+    audioChunksRef.current = [];
 
     try {
-      recognitionRef.current.start();
-      toast('Listening... Speak now', { icon: '🎤', duration: 2000 });
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          sampleRate: 16000,
+          echoCancellation: true,
+          noiseSuppression: true,
+        }
+      });
+      streamRef.current = stream;
+
+      // Create MediaRecorder with webm/opus format (best for Speech-to-Text)
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/mp4';
+
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.start(1000); // Collect data every second
+      setIsRecordingNotes(true);
+
+      // Start duration timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+
+      toast('Recording... Speak now', { icon: '🎤', duration: 2000 });
     } catch (error) {
-      console.error('Failed to start recognition:', error);
-      setIsRecordingNotes(false);
-      toast.error('Failed to start voice input');
+      console.error('Failed to start recording:', error);
+      if (error.name === 'NotAllowedError') {
+        toast.error('Microphone access denied. Please allow microphone access.');
+      } else {
+        toast.error('Failed to start voice recording');
+      }
     }
   };
 
-  // Stop voice recording and process with AI
+  // Stop voice recording and send to server for transcription
   const stopNotesRecording = async () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+    // Stop the recording timer
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
     }
-    setIsRecordingNotes(false);
 
-    if (!notesTranscript.trim()) {
-      toast.error('No speech detected. Please try again.');
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+      setIsRecordingNotes(false);
       return;
     }
 
+    setIsRecordingNotes(false);
     setIsProcessingVoice(true);
 
-    try {
-      const response = await aiApi.processVoiceNote(notesTranscript, 'Audit additional notes and observations');
+    // Stop the media recorder and wait for final data
+    return new Promise((resolve) => {
+      mediaRecorderRef.current.onstop = async () => {
+        // Stop all tracks
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
 
-      if (response.success && response.data) {
-        const result = response.data;
-        // Append cleaned note to existing global notes
-        const cleanedNote = result.cleanedNote || notesTranscript;
-        setGlobalNotes(prev => prev ? `${prev}\n\n${cleanedNote}` : cleanedNote);
-        toast.success('Voice note processed and added!');
-      } else {
-        // Fallback: just append raw transcript
-        setGlobalNotes(prev => prev ? `${prev}\n\n${notesTranscript}` : notesTranscript);
-        toast('Added raw transcript', { icon: '⚠️' });
-      }
-    } catch (error) {
-      console.error('Voice processing error:', error);
-      // Still save the raw transcript
-      setGlobalNotes(prev => prev ? `${prev}\n\n${notesTranscript}` : notesTranscript);
-      toast('Added raw transcript (processing failed)', { icon: '⚠️' });
-    } finally {
-      setIsProcessingVoice(false);
-      setNotesTranscript('');
-    }
+        // Check if we have audio data
+        if (audioChunksRef.current.length === 0) {
+          toast.error('No audio recorded. Please try again.');
+          setIsProcessingVoice(false);
+          resolve();
+          return;
+        }
+
+        // Combine audio chunks into a single blob
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: mediaRecorderRef.current.mimeType || 'audio/webm'
+        });
+
+        // Check minimum audio size
+        if (audioBlob.size < 1000) {
+          toast.error('Recording too short. Please speak for longer.');
+          setIsProcessingVoice(false);
+          resolve();
+          return;
+        }
+
+        try {
+          // Convert blob to base64
+          const audioBase64 = await blobToBase64(audioBlob);
+
+          // Send to server for transcription and AI processing
+          const response = await aiApi.transcribeAndProcess(audioBase64, 'Audit additional notes and observations');
+
+          if (response.success && response.data) {
+            const result = response.data;
+
+            // Set transcript for display
+            if (result.transcript) {
+              setNotesTranscript(result.transcript);
+            }
+
+            // Process the AI result if available
+            if (result.processedResult?.cleanedNote) {
+              const cleanedNote = result.processedResult.cleanedNote;
+              setGlobalNotes(prev => prev ? `${prev}\n\n${cleanedNote}` : cleanedNote);
+              toast.success(`Voice note processed! (${Math.round((result.confidence || 0) * 100)}% confidence)`);
+            } else if (result.transcript) {
+              // Fallback: use raw transcript if AI processing failed
+              setGlobalNotes(prev => prev ? `${prev}\n\n${result.transcript}` : result.transcript);
+              toast('Transcription complete (AI processing unavailable)', { icon: '⚠️' });
+            }
+          } else if (response.data?.error) {
+            toast.error(response.data.error);
+          } else {
+            throw new Error(response.error || 'Failed to process voice note');
+          }
+        } catch (error) {
+          console.error('Voice processing error:', error);
+          toast.error(error.message || 'Failed to transcribe audio. Please try again.');
+        } finally {
+          setIsProcessingVoice(false);
+          setRecordingDuration(0);
+          resolve();
+        }
+      };
+
+      mediaRecorderRef.current.stop();
+    });
   };
 
   // Cancel notes recording
   const cancelNotesRecording = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.abort();
+    // Stop the recording timer
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
     }
+
+    // Stop media recorder
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+
+    // Stop all tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+
+    // Clear audio chunks
+    audioChunksRef.current = [];
+
     setIsRecordingNotes(false);
     setNotesTranscript('');
+    setRecordingDuration(0);
   };
 
   const handleTemplateSelect = (template) => {
@@ -722,7 +823,7 @@ export default function NewAudit() {
             <h3 className="font-semibold text-slate-900 dark:text-white">
               Additional Notes
             </h3>
-            {isSpeechRecognitionSupported() && !isRecordingNotes && !isProcessingVoice && (
+            {isMediaRecorderSupported() && !isRecordingNotes && !isProcessingVoice && (
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={startNotesRecording}
@@ -752,14 +853,16 @@ export default function NewAudit() {
                     {isRecordingNotes ? (
                       <>
                         <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                        <span className="text-sm font-medium text-red-700 dark:text-red-300">Recording...</span>
+                        <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                          Recording... {formatDuration(recordingDuration)}
+                        </span>
                       </>
                     ) : (
                       <>
                         <Loader2 size={16} className="animate-spin text-purple-600 dark:text-purple-400" />
                         <span className="text-sm font-medium text-purple-700 dark:text-purple-300 flex items-center gap-1">
                           <Sparkles size={14} />
-                          Processing with Gemini AI...
+                          Transcribing with Google Cloud Speech-to-Text...
                         </span>
                       </>
                     )}
@@ -774,7 +877,7 @@ export default function NewAudit() {
                   )}
                 </div>
 
-                {notesTranscript && (
+                {notesTranscript && !isRecordingNotes && (
                   <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg mb-3">
                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Transcript:</p>
                     <p className="text-sm text-slate-700 dark:text-slate-300">{notesTranscript}</p>
@@ -782,14 +885,19 @@ export default function NewAudit() {
                 )}
 
                 {isRecordingNotes && (
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={stopNotesRecording}
-                    className="w-full py-3 px-4 rounded-xl bg-red-500 text-white font-medium flex items-center justify-center gap-2"
-                  >
-                    <Square size={16} fill="white" />
-                    <span>Stop & Process</span>
-                  </motion.button>
+                  <div className="space-y-2">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                      Server-side transcription provides better accuracy for various accents and noise conditions
+                    </p>
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={stopNotesRecording}
+                      className="w-full py-3 px-4 rounded-xl bg-red-500 text-white font-medium flex items-center justify-center gap-2"
+                    >
+                      <Square size={16} fill="white" />
+                      <span>Stop & Transcribe</span>
+                    </motion.button>
+                  </div>
                 )}
               </motion.div>
             )}

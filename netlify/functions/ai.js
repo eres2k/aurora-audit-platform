@@ -3,6 +3,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+// Google Cloud Speech-to-Text API endpoint
+const SPEECH_TO_TEXT_API = 'https://speech.googleapis.com/v1/speech:recognize';
+
 // CORS headers for all responses
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -617,6 +620,160 @@ Owner Guidelines:
   }
 };
 
+// Transcribe audio using Google Cloud Speech-to-Text API
+const handleTranscribeAudio = async (audioBase64, languageCode = 'en-US') => {
+  // Get the Google Cloud API key (can be same as Gemini or separate)
+  const apiKey = process.env.GOOGLE_CLOUD_SPEECH_API_KEY || process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('Google Cloud API key not configured');
+  }
+
+  // Clean up base64 string if it includes the data URL prefix
+  let cleanBase64 = audioBase64;
+  let audioEncoding = 'WEBM_OPUS'; // Default for MediaRecorder webm/opus
+
+  if (audioBase64.includes('data:')) {
+    const matches = audioBase64.match(/data:([^;]+);base64,(.+)/);
+    if (matches) {
+      const mimeType = matches[1];
+      cleanBase64 = matches[2];
+
+      // Map mime types to Google Cloud Speech encoding formats
+      if (mimeType.includes('webm')) {
+        audioEncoding = 'WEBM_OPUS';
+      } else if (mimeType.includes('ogg')) {
+        audioEncoding = 'OGG_OPUS';
+      } else if (mimeType.includes('wav')) {
+        audioEncoding = 'LINEAR16';
+      } else if (mimeType.includes('mp3') || mimeType.includes('mpeg')) {
+        audioEncoding = 'MP3';
+      } else if (mimeType.includes('flac')) {
+        audioEncoding = 'FLAC';
+      }
+    }
+  }
+
+  // Prepare the request body for Google Cloud Speech-to-Text
+  const requestBody = {
+    config: {
+      encoding: audioEncoding,
+      languageCode: languageCode,
+      enableAutomaticPunctuation: true,
+      model: 'latest_long', // Best for varied audio conditions
+      useEnhanced: true, // Enhanced model for better accuracy
+      // Enable speech adaptation for technical vocabulary
+      speechContexts: [
+        {
+          phrases: [
+            // Safety audit related terms
+            'fire extinguisher', 'emergency exit', 'PPE', 'personal protective equipment',
+            'safety hazard', 'compliance', 'violation', 'walkway', 'obstruction',
+            'guard', 'conveyor', 'forklift', 'rack', 'pallet', 'aisle',
+            'high visibility', 'hard hat', 'safety glasses', 'ear protection',
+            'spill', 'leak', 'damage', 'expired', 'inspection', 'maintenance',
+            'electrical', 'chemical', 'flammable', 'OSHA', 'ASchG',
+            // Amazon/warehouse terms
+            'OPS', 'ACES', 'RME', 'WHS', 'station', 'zone', 'area',
+            // Common measurements
+            'meter', 'centimeter', 'kilogram', 'degrees'
+          ],
+          boost: 15
+        }
+      ]
+    },
+    audio: {
+      content: cleanBase64
+    }
+  };
+
+  try {
+    const response = await fetch(`${SPEECH_TO_TEXT_API}?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Speech-to-Text API error:', errorData);
+      throw new Error(errorData.error?.message || `Speech-to-Text API failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    // Extract transcript from results
+    let transcript = '';
+    let confidence = 0;
+
+    if (result.results && result.results.length > 0) {
+      // Combine all transcript segments
+      transcript = result.results
+        .map(r => r.alternatives?.[0]?.transcript || '')
+        .join(' ')
+        .trim();
+
+      // Calculate average confidence
+      const confidences = result.results
+        .map(r => r.alternatives?.[0]?.confidence || 0)
+        .filter(c => c > 0);
+
+      if (confidences.length > 0) {
+        confidence = confidences.reduce((a, b) => a + b, 0) / confidences.length;
+      }
+    }
+
+    return {
+      transcript,
+      confidence,
+      languageCode,
+      wordCount: transcript.split(/\s+/).filter(w => w).length,
+    };
+  } catch (error) {
+    console.error('Transcription error:', error);
+    throw error;
+  }
+};
+
+// Transcribe audio and then process with AI for structured extraction
+const handleTranscribeAndProcess = async (audioBase64, questionContext = '', languageCode = 'en-US') => {
+  // First, transcribe the audio
+  const transcriptionResult = await handleTranscribeAudio(audioBase64, languageCode);
+
+  if (!transcriptionResult.transcript) {
+    return {
+      transcript: '',
+      confidence: 0,
+      processedResult: null,
+      error: 'No speech detected in audio'
+    };
+  }
+
+  // Then process the transcript with Gemini AI for structured extraction
+  try {
+    const processedResult = await handleProcessVoiceNote(transcriptionResult.transcript, questionContext);
+
+    return {
+      transcript: transcriptionResult.transcript,
+      confidence: transcriptionResult.confidence,
+      wordCount: transcriptionResult.wordCount,
+      processedResult
+    };
+  } catch (processingError) {
+    // Return transcription even if AI processing fails
+    console.error('AI processing failed:', processingError);
+    return {
+      transcript: transcriptionResult.transcript,
+      confidence: transcriptionResult.confidence,
+      wordCount: transcriptionResult.wordCount,
+      processedResult: null,
+      processingError: processingError.message
+    };
+  }
+};
+
 // Analyze image for safety compliance
 const handleAnalyzeImage = async (imageBase64, question) => {
   const model = genAI.getGenerativeModel({
@@ -710,7 +867,7 @@ export const handler = async (event, context) => {
 
   try {
     const body = JSON.parse(event.body);
-    const { action, audit, template, imageBase64, question, prompt, category, transcript, questionContext, conversationHistory, noteText, analysisContext } = body;
+    const { action, audit, template, imageBase64, question, prompt, category, transcript, questionContext, conversationHistory, noteText, analysisContext, audioBase64, languageCode } = body;
 
     if (!action) {
       return jsonResponse({ error: 'Action is required' }, 400);
@@ -780,6 +937,20 @@ export const handler = async (event, context) => {
           return jsonResponse({ error: 'Question text is required for action suggestion' }, 400);
         }
         result = await handleAutoSuggestAction(question, noteText, analysisContext);
+        break;
+
+      case 'transcribe_audio':
+        if (!audioBase64) {
+          return jsonResponse({ error: 'Audio data is required for transcription' }, 400);
+        }
+        result = await handleTranscribeAudio(audioBase64, languageCode || 'en-US');
+        break;
+
+      case 'transcribe_and_process':
+        if (!audioBase64) {
+          return jsonResponse({ error: 'Audio data is required for transcription' }, 400);
+        }
+        result = await handleTranscribeAndProcess(audioBase64, questionContext || '', languageCode || 'en-US');
         break;
 
       default:

@@ -5,9 +5,19 @@ import toast from 'react-hot-toast';
 import { aiApi } from '../../utils/api';
 import PolicyChatbot from './PolicyChatbot';
 
-// Check if Web Speech API is available
-const isSpeechRecognitionSupported = () => {
-  return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+// Check if MediaRecorder API is available (for server-side transcription)
+const isMediaRecorderSupported = () => {
+  return typeof MediaRecorder !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+};
+
+// Helper to convert audio blob to base64
+const blobToBase64 = (blob) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };
 
 const OWNER_OPTIONS = ['OPS', 'ACES', 'RME', 'WHS'];
@@ -41,12 +51,16 @@ export default function QuestionItem({
   const [showHelpChatbot, setShowHelpChatbot] = useState(false);
   const [helpInitialMessage, setHelpInitialMessage] = useState('');
 
-  // Voice Recording state
+  // Voice Recording state (server-side transcription with MediaRecorder)
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [voiceResult, setVoiceResult] = useState(null);
-  const recognitionRef = useRef(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const streamRef = useRef(null);
+  const recordingTimerRef = useRef(null);
 
   // Enhance Note state
   const [isEnhancingNote, setIsEnhancingNote] = useState(false);
@@ -54,134 +68,217 @@ export default function QuestionItem({
   // Auto-suggest Action state
   const [isAutoSuggesting, setIsAutoSuggesting] = useState(false);
 
-  // Initialize speech recognition
+  // Cleanup on unmount
   useEffect(() => {
-    if (isSpeechRecognitionSupported()) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onresult = (event) => {
-        let finalTranscript = '';
-        let interimTranscript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const result = event.results[i];
-          if (result.isFinal) {
-            finalTranscript += result[0].transcript;
-          } else {
-            interimTranscript += result[0].transcript;
-          }
-        }
-
-        setTranscript(prev => prev + finalTranscript);
-      };
-
-      recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-        setIsRecording(false);
-        if (event.error === 'not-allowed') {
-          toast.error('Microphone access denied. Please allow microphone access.');
-        } else if (event.error !== 'aborted') {
-          toast.error('Voice recognition error. Please try again.');
-        }
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-      };
-    }
-
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.abort();
+      // Cleanup media recorder and stream
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
       }
     };
   }, []);
 
-  // Start voice recording
-  const startRecording = () => {
-    if (!isSpeechRecognitionSupported()) {
-      toast.error('Voice input is not supported in this browser. Try Chrome.');
+  // Start voice recording using MediaRecorder for server-side transcription
+  const startRecording = async () => {
+    if (!isMediaRecorderSupported()) {
+      toast.error('Voice recording is not supported in this browser.');
       return;
     }
 
     setTranscript('');
     setVoiceResult(null);
-    setIsRecording(true);
+    setRecordingDuration(0);
+    audioChunksRef.current = [];
 
     try {
-      recognitionRef.current.start();
-      toast('Listening... Speak now', { icon: '🎤', duration: 2000 });
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          sampleRate: 16000,
+          echoCancellation: true,
+          noiseSuppression: true,
+        }
+      });
+      streamRef.current = stream;
+
+      // Create MediaRecorder with webm/opus format (best for Speech-to-Text)
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/mp4';
+
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.start(1000); // Collect data every second
+      setIsRecording(true);
+
+      // Start duration timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+
+      toast('Recording... Speak now', { icon: '🎤', duration: 2000 });
     } catch (error) {
-      console.error('Failed to start recognition:', error);
-      setIsRecording(false);
-      toast.error('Failed to start voice input');
+      console.error('Failed to start recording:', error);
+      if (error.name === 'NotAllowedError') {
+        toast.error('Microphone access denied. Please allow microphone access.');
+      } else {
+        toast.error('Failed to start voice recording');
+      }
     }
   };
 
-  // Stop voice recording and process
+  // Stop voice recording and send to server for transcription
   const stopRecording = async () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+    // Stop the recording timer
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
     }
-    setIsRecording(false);
 
-    if (!transcript.trim()) {
-      toast.error('No speech detected. Please try again.');
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+      setIsRecording(false);
       return;
     }
 
+    setIsRecording(false);
     setIsProcessingVoice(true);
 
-    try {
-      const response = await aiApi.processVoiceNote(transcript, question.text);
-
-      if (response.success && response.data) {
-        const result = response.data;
-        setVoiceResult(result);
-
-        // Auto-fill note with cleaned text
-        if (onNoteChange && result.cleanedNote) {
-          onNoteChange(result.cleanedNote);
+    // Stop the media recorder and wait for final data
+    return new Promise((resolve) => {
+      mediaRecorderRef.current.onstop = async () => {
+        // Stop all tracks
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
         }
 
-        // Auto-suggest status if available
-        if (result.suggestedStatus && onChange) {
-          onChange(result.suggestedStatus);
-          toast(`Status auto-set to ${result.suggestedStatus.toUpperCase()}`, {
-            icon: result.suggestedStatus === 'pass' ? '✅' : result.suggestedStatus === 'fail' ? '❌' : '➖',
-            duration: 3000,
-          });
+        // Check if we have audio data
+        if (audioChunksRef.current.length === 0) {
+          toast.error('No audio recorded. Please try again.');
+          setIsProcessingVoice(false);
+          resolve();
+          return;
         }
 
-        toast.success('Voice note processed!');
-      } else {
-        throw new Error(response.error || 'Failed to process voice note');
-      }
-    } catch (error) {
-      console.error('Voice processing error:', error);
-      // Still save the raw transcript even if processing fails
-      if (onNoteChange && transcript) {
-        onNoteChange(transcript);
-        toast('Saved raw transcript (processing failed)', { icon: '⚠️' });
-      } else {
-        toast.error(error.message || 'Failed to process voice note');
-      }
-    } finally {
-      setIsProcessingVoice(false);
-    }
+        // Combine audio chunks into a single blob
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: mediaRecorderRef.current.mimeType || 'audio/webm'
+        });
+
+        // Check minimum audio size (very short recordings may not have speech)
+        if (audioBlob.size < 1000) {
+          toast.error('Recording too short. Please speak for longer.');
+          setIsProcessingVoice(false);
+          resolve();
+          return;
+        }
+
+        try {
+          // Convert blob to base64
+          const audioBase64 = await blobToBase64(audioBlob);
+
+          // Send to server for transcription and AI processing
+          const response = await aiApi.transcribeAndProcess(audioBase64, question.text);
+
+          if (response.success && response.data) {
+            const result = response.data;
+
+            // Set transcript for display
+            if (result.transcript) {
+              setTranscript(result.transcript);
+            }
+
+            // Process the AI result if available
+            if (result.processedResult) {
+              setVoiceResult(result.processedResult);
+
+              // Auto-fill note with cleaned text
+              if (onNoteChange && result.processedResult.cleanedNote) {
+                onNoteChange(result.processedResult.cleanedNote);
+              }
+
+              // Auto-suggest status if available
+              if (result.processedResult.suggestedStatus && onChange) {
+                onChange(result.processedResult.suggestedStatus);
+                toast(`Status auto-set to ${result.processedResult.suggestedStatus.toUpperCase()}`, {
+                  icon: result.processedResult.suggestedStatus === 'pass' ? '✅' : result.processedResult.suggestedStatus === 'fail' ? '❌' : '➖',
+                  duration: 3000,
+                });
+              }
+
+              toast.success(`Voice note processed! (${Math.round((result.confidence || 0) * 100)}% confidence)`);
+            } else if (result.transcript) {
+              // Fallback: use raw transcript if AI processing failed
+              if (onNoteChange) {
+                onNoteChange(result.transcript);
+              }
+              toast('Transcription complete (AI processing unavailable)', { icon: '⚠️' });
+            }
+          } else if (response.data?.error) {
+            toast.error(response.data.error);
+          } else {
+            throw new Error(response.error || 'Failed to process voice note');
+          }
+        } catch (error) {
+          console.error('Voice processing error:', error);
+          toast.error(error.message || 'Failed to transcribe audio. Please try again.');
+        } finally {
+          setIsProcessingVoice(false);
+          resolve();
+        }
+      };
+
+      mediaRecorderRef.current.stop();
+    });
   };
 
   // Cancel recording
   const cancelRecording = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.abort();
+    // Stop the recording timer
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
     }
+
+    // Stop media recorder
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+
+    // Stop all tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+
+    // Clear audio chunks
+    audioChunksRef.current = [];
+
     setIsRecording(false);
     setTranscript('');
+    setRecordingDuration(0);
+  };
+
+  // Format recording duration as mm:ss
+  const formatDuration = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   // Open help chatbot with question context
@@ -562,8 +659,8 @@ export default function QuestionItem({
                   />
                   {/* Button group for voice input and enhance note */}
                   <div className="absolute right-2 top-2 flex gap-1 z-10">
-                    {/* Microphone button for voice input */}
-                    {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
+                    {/* Microphone button for voice input (server-side transcription) */}
+                    {isMediaRecorderSupported() && !isRecording && !isProcessingVoice && (
                       <motion.button
                         type="button"
                         whileTap={{ scale: 0.9 }}
@@ -753,12 +850,16 @@ export default function QuestionItem({
                       {isRecording ? (
                         <>
                           <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                          <span className="text-sm font-medium text-red-700 dark:text-red-300">Recording...</span>
+                          <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                            Recording... {formatDuration(recordingDuration)}
+                          </span>
                         </>
                       ) : (
                         <>
                           <Loader2 size={16} className="animate-spin text-purple-600 dark:text-purple-400" />
-                          <span className="text-sm font-medium text-purple-700 dark:text-purple-300">Processing...</span>
+                          <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                            Transcribing with Google Cloud Speech-to-Text...
+                          </span>
                         </>
                       )}
                     </div>
@@ -772,7 +873,8 @@ export default function QuestionItem({
                     )}
                   </div>
 
-                  {transcript && (
+                  {/* Show transcript after processing */}
+                  {transcript && !isRecording && (
                     <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg mb-3">
                       <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Transcript:</p>
                       <p className="text-sm text-slate-700 dark:text-slate-300">{transcript}</p>
@@ -780,14 +882,19 @@ export default function QuestionItem({
                   )}
 
                   {isRecording && (
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={stopRecording}
-                      className="w-full py-3 px-4 rounded-xl bg-red-500 text-white font-medium flex items-center justify-center gap-2"
-                    >
-                      <Square size={16} fill="white" />
-                      <span>Stop & Process</span>
-                    </motion.button>
+                    <div className="space-y-2">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                        Server-side transcription provides better accuracy for various accents and noise conditions
+                      </p>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={stopRecording}
+                        className="w-full py-3 px-4 rounded-xl bg-red-500 text-white font-medium flex items-center justify-center gap-2"
+                      >
+                        <Square size={16} fill="white" />
+                        <span>Stop & Transcribe</span>
+                      </motion.button>
+                    </div>
                   )}
                 </motion.div>
               )}

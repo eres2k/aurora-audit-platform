@@ -352,6 +352,44 @@ export const aiApi = {
       }),
     });
   },
+
+  /**
+   * Transcribe audio using Google Cloud Speech-to-Text API
+   * @param {string} audioBase64 - Base64 encoded audio data (can include data URL prefix)
+   * @param {string} languageCode - Language code for transcription (default: 'en-US')
+   * @returns {Promise<Object>} Transcription result with transcript, confidence, etc.
+   */
+  transcribeAudio: async (audioBase64, languageCode = 'en-US') => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'transcribe_audio',
+        audioBase64: audioBase64,
+        languageCode: languageCode,
+      }),
+    });
+  },
+
+  /**
+   * Transcribe audio and process with AI for structured data extraction
+   * Server-side transcription using Google Cloud Speech-to-Text API followed by
+   * Gemini AI processing for structured audit data extraction.
+   * @param {string} audioBase64 - Base64 encoded audio data (can include data URL prefix)
+   * @param {string} questionContext - The current audit question context (optional)
+   * @param {string} languageCode - Language code for transcription (default: 'en-US')
+   * @returns {Promise<Object>} Transcription + processed result with cleaned note, status suggestion, etc.
+   */
+  transcribeAndProcess: async (audioBase64, questionContext = '', languageCode = 'en-US') => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'transcribe_and_process',
+        audioBase64: audioBase64,
+        questionContext: questionContext,
+        languageCode: languageCode,
+      }),
+    });
+  },
 };
 
 export default {
