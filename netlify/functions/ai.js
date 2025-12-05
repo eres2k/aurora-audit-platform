@@ -617,6 +617,52 @@ Owner Guidelines:
   }
 };
 
+// Auto-describe an issue based on the audit question context
+const handleAutoDescribeIssue = async (questionText, analysisContext = null) => {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const prompt = `You are an experienced safety auditor documenting a finding during a workplace safety inspection.
+
+The following audit question has been marked as FAILED:
+"${questionText}"
+
+${analysisContext ? `Safety Analysis Context: ${JSON.stringify(analysisContext)}` : ''}
+
+Generate a professional issue description that an auditor would write when this item fails. Return a JSON object:
+{
+  "description": "A clear, professional description of the issue found. Should describe what was observed that caused this item to fail. Be specific but concise. 1-2 sentences.",
+  "severity": "low" | "medium" | "high",
+  "suggestedAction": "A brief recommended corrective action"
+}
+
+Guidelines:
+- The description should be written as if the auditor observed a specific problem
+- Use professional language suitable for an official audit report
+- Be specific about what was found wrong, not just that "this failed"
+- Common issues include: missing items, damaged equipment, blocked pathways, expired items, improper storage, missing signage, worn PPE, etc.
+- If the question mentions specific equipment or areas, reference them in the description
+- Keep the description factual and objective`;
+
+  const result = await model.generateContent(prompt);
+  const response = result.response;
+  const text = response.text();
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    throw new Error('Failed to parse AI response as JSON');
+  }
+};
+
 // Analyze image for safety compliance
 const handleAnalyzeImage = async (imageBase64, question) => {
   const model = genAI.getGenerativeModel({
@@ -780,6 +826,13 @@ export const handler = async (event, context) => {
           return jsonResponse({ error: 'Question text is required for action suggestion' }, 400);
         }
         result = await handleAutoSuggestAction(question, noteText, analysisContext);
+        break;
+
+      case 'auto_describe_issue':
+        if (!question) {
+          return jsonResponse({ error: 'Question text is required for issue description' }, 400);
+        }
+        result = await handleAutoDescribeIssue(question, analysisContext);
         break;
 
       default:

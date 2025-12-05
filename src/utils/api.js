@@ -352,6 +352,23 @@ export const aiApi = {
       }),
     });
   },
+
+  /**
+   * Auto-describe an issue based on the question context
+   * @param {string} questionText - The audit question that failed
+   * @param {Object} analysisContext - Safety analysis results if available (optional)
+   * @returns {Promise<Object>} Auto-generated issue description
+   */
+  autoDescribeIssue: async (questionText, analysisContext = null) => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'auto_describe_issue',
+        question: questionText,
+        analysisContext: analysisContext,
+      }),
+    });
+  },
 };
 
 export default {

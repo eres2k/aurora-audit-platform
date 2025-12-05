@@ -722,17 +722,19 @@ export default function NewAudit() {
             <h3 className="font-semibold text-slate-900 dark:text-white">
               Additional Notes
             </h3>
-            {isSpeechRecognitionSupported() && !isRecordingNotes && !isProcessingVoice && (
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={startNotesRecording}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm font-medium shadow-md shadow-indigo-500/30 transition-all"
-              >
-                <Mic size={16} />
-                <span>Voice Note</span>
-              </motion.button>
-            )}
           </div>
+
+          {/* Voice Input Button - More prominent */}
+          {isSpeechRecognitionSupported() && !isRecordingNotes && !isProcessingVoice && (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={startNotesRecording}
+              className="w-full mb-4 flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-medium shadow-lg shadow-indigo-500/30 transition-all"
+            >
+              <Mic size={20} />
+              <span>Tap to Record Voice Note</span>
+            </motion.button>
+          )}
 
           {/* Voice Recording UI */}
           <AnimatePresence>
