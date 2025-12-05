@@ -316,6 +316,42 @@ export const aiApi = {
       }),
     });
   },
+
+  /**
+   * Enhance an audit note to make it more professional
+   * @param {string} noteText - The original note text to enhance
+   * @param {string} questionContext - The audit question context (optional)
+   * @returns {Promise<Object>} Enhanced note with improvements list
+   */
+  enhanceNote: async (noteText, questionContext = '') => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'enhance_note',
+        noteText: noteText,
+        questionContext: questionContext,
+      }),
+    });
+  },
+
+  /**
+   * Auto-suggest action description and priority based on the issue
+   * @param {string} questionText - The audit question that failed
+   * @param {string} noteText - The auditor's notes about the issue (optional)
+   * @param {Object} analysisContext - Safety analysis results if available (optional)
+   * @returns {Promise<Object>} Suggested action with description, priority, and owner
+   */
+  autoSuggestAction: async (questionText, noteText = '', analysisContext = null) => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'auto_suggest_action',
+        question: questionText,
+        noteText: noteText,
+        analysisContext: analysisContext,
+      }),
+    });
+  },
 };
 
 export default {

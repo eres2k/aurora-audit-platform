@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Camera, AlertTriangle, Star, ChevronDown, MinusCircle, Plus, Trash2, Image, ClipboardList, Users, Sparkles, Loader2, Shield, XCircle, Mic, MicOff, Square, HelpCircle } from 'lucide-react';
+import { Check, X, Camera, AlertTriangle, Star, ChevronDown, MinusCircle, Plus, Trash2, Image, ClipboardList, Users, Sparkles, Loader2, Shield, XCircle, Mic, MicOff, Square, HelpCircle, Wand2, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { aiApi } from '../../utils/api';
 import PolicyChatbot from './PolicyChatbot';
@@ -47,6 +47,12 @@ export default function QuestionItem({
   const [transcript, setTranscript] = useState('');
   const [voiceResult, setVoiceResult] = useState(null);
   const recognitionRef = useRef(null);
+
+  // Enhance Note state
+  const [isEnhancingNote, setIsEnhancingNote] = useState(false);
+
+  // Auto-suggest Action state
+  const [isAutoSuggesting, setIsAutoSuggesting] = useState(false);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -269,6 +275,70 @@ export default function QuestionItem({
     }
   };
 
+  // Handle enhance note with AI
+  const handleEnhanceNote = async () => {
+    if (!note || note.trim().length < 5) {
+      toast.error('Please write a note first (at least 5 characters)');
+      return;
+    }
+
+    setIsEnhancingNote(true);
+
+    try {
+      const response = await aiApi.enhanceNote(note, question.text);
+
+      if (response.success && response.data) {
+        const result = response.data;
+
+        if (result.enhancedNote && onNoteChange) {
+          onNoteChange(result.enhancedNote);
+          toast.success('Note enhanced!');
+        }
+      } else {
+        throw new Error(response.error || 'Failed to enhance note');
+      }
+    } catch (error) {
+      console.error('Enhance note error:', error);
+      toast.error(error.message || 'Failed to enhance note');
+    } finally {
+      setIsEnhancingNote(false);
+    }
+  };
+
+  // Handle auto-suggest action
+  const handleAutoSuggestAction = async () => {
+    setIsAutoSuggesting(true);
+
+    try {
+      const response = await aiApi.autoSuggestAction(
+        question.text,
+        note || '',
+        safetyAnalysis
+      );
+
+      if (response.success && response.data) {
+        const result = response.data;
+
+        // Update action data with suggestions
+        setActionData(prev => ({
+          ...prev,
+          priority: result.priority || prev.priority,
+          notes: result.description || prev.notes,
+          owner: result.suggestedOwner || prev.owner,
+        }));
+
+        toast.success('Action auto-filled!');
+      } else {
+        throw new Error(response.error || 'Failed to suggest action');
+      }
+    } catch (error) {
+      console.error('Auto-suggest action error:', error);
+      toast.error(error.message || 'Failed to auto-suggest action');
+    } finally {
+      setIsAutoSuggesting(false);
+    }
+  };
+
   const renderInput = () => {
     switch (question.type) {
       case 'bool':
@@ -476,20 +546,47 @@ export default function QuestionItem({
                     onChange={(e) => onNoteChange && onNoteChange(e.target.value)}
                     placeholder="Describe the problem..."
                     rows={2}
-                    className="w-full text-sm p-3 pr-12 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 placeholder:text-red-300 dark:placeholder:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
+                    className="w-full text-sm p-3 pr-24 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 placeholder:text-red-300 dark:placeholder:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
                   />
-                  {/* Microphone button for voice input */}
-                  {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
-                    <motion.button
-                      whileTap={{ scale: 0.9 }}
-                      onClick={startRecording}
-                      className="absolute right-2 top-2 w-8 h-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center shadow-sm transition-colors"
-                      title="Voice input"
-                    >
-                      <Mic size={16} />
-                    </motion.button>
-                  )}
+                  {/* Button group for voice input and enhance note */}
+                  <div className="absolute right-2 top-2 flex gap-1">
+                    {/* Microphone button for voice input */}
+                    {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={startRecording}
+                        className="w-8 h-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center shadow-sm transition-colors"
+                        title="Voice input"
+                      >
+                        <Mic size={16} />
+                      </motion.button>
+                    )}
+                    {/* Enhance Note button */}
+                    {note && note.trim().length >= 5 && !isEnhancingNote && (
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={handleEnhanceNote}
+                        className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex items-center justify-center shadow-sm transition-colors"
+                        title="Enhance Note with AI"
+                      >
+                        <Wand2 size={16} />
+                      </motion.button>
+                    )}
+                    {/* Loading state for enhance */}
+                    {isEnhancingNote && (
+                      <div className="w-8 h-8 rounded-lg bg-purple-500 text-white flex items-center justify-center">
+                        <Loader2 size={16} className="animate-spin" />
+                      </div>
+                    )}
+                  </div>
                 </div>
+                {/* Enhance Note hint */}
+                {note && note.trim().length >= 5 && !isEnhancingNote && (
+                  <p className="mt-1 text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                    <Wand2 size={10} />
+                    Click the wand icon to enhance your note with AI
+                  </p>
+                )}
               </div>
             )}
 
@@ -682,34 +779,27 @@ export default function QuestionItem({
               )}
             </AnimatePresence>
 
-            {/* Voice AI Result Display */}
+            {/* Voice AI Result Display - Enhanced Smart Assistant */}
             <AnimatePresence>
               {voiceResult && !isRecording && !isProcessingVoice && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="mt-4 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-300 dark:border-indigo-700"
+                  className="mt-4 p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border-2 border-indigo-300 dark:border-indigo-700"
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center">
-                        <Mic size={16} className="text-white" />
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 flex items-center justify-center">
+                        <Sparkles size={16} className="text-white" />
                       </div>
                       <div>
                         <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                          <Sparkles size={12} />
-                          Voice Note Processed
+                          Smart Voice Assistant
                         </p>
-                        {voiceResult.suggestedSeverity && (
-                          <p className={`text-sm font-semibold ${
-                            voiceResult.suggestedSeverity === 'high' ? 'text-red-700 dark:text-red-300' :
-                            voiceResult.suggestedSeverity === 'medium' ? 'text-amber-700 dark:text-amber-300' :
-                            'text-blue-700 dark:text-blue-300'
-                          }`}>
-                            Severity: {voiceResult.suggestedSeverity?.toUpperCase()}
-                          </p>
-                        )}
+                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                          AI analyzed your voice note
+                        </p>
                       </div>
                     </div>
                     <button
@@ -720,13 +810,107 @@ export default function QuestionItem({
                     </button>
                   </div>
 
+                  {/* Suggested Status and Severity - Clickable Apply Buttons */}
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {/* Suggested Status */}
+                    {voiceResult.suggestedStatus && (
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          if (onChange) {
+                            onChange(voiceResult.suggestedStatus);
+                            toast.success(`Status set to ${voiceResult.suggestedStatus.toUpperCase()}`);
+                          }
+                        }}
+                        className={`p-3 rounded-xl border-2 transition-all ${
+                          value === voiceResult.suggestedStatus
+                            ? 'border-green-400 bg-green-100 dark:bg-green-900/30'
+                            : 'border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-400 hover:bg-white dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Status</span>
+                          {value !== voiceResult.suggestedStatus && (
+                            <span className="text-xs text-indigo-500 font-medium">Tap to apply</span>
+                          )}
+                          {value === voiceResult.suggestedStatus && (
+                            <Check size={14} className="text-green-500" />
+                          )}
+                        </div>
+                        <div className={`text-lg font-bold ${
+                          voiceResult.suggestedStatus === 'fail' ? 'text-red-600 dark:text-red-400' :
+                          voiceResult.suggestedStatus === 'pass' ? 'text-emerald-600 dark:text-emerald-400' :
+                          'text-slate-600 dark:text-slate-400'
+                        }`}>
+                          {voiceResult.suggestedStatus === 'fail' ? 'RISK' :
+                           voiceResult.suggestedStatus === 'pass' ? 'SAFE' :
+                           voiceResult.suggestedStatus?.toUpperCase()}
+                        </div>
+                      </motion.button>
+                    )}
+
+                    {/* Suggested Severity */}
+                    {voiceResult.suggestedSeverity && (
+                      <div className={`p-3 rounded-xl border-2 ${
+                        voiceResult.suggestedSeverity === 'high'
+                          ? 'border-red-300 bg-red-100 dark:border-red-700 dark:bg-red-900/30'
+                          : voiceResult.suggestedSeverity === 'medium'
+                          ? 'border-amber-300 bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30'
+                          : 'border-blue-300 bg-blue-100 dark:border-blue-700 dark:bg-blue-900/30'
+                      }`}>
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase block mb-1">Severity</span>
+                        <div className={`text-lg font-bold ${
+                          voiceResult.suggestedSeverity === 'high' ? 'text-red-600 dark:text-red-400' :
+                          voiceResult.suggestedSeverity === 'medium' ? 'text-amber-600 dark:text-amber-400' :
+                          'text-blue-600 dark:text-blue-400'
+                        }`}>
+                          {voiceResult.suggestedSeverity?.toUpperCase()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Extracted Details */}
+                  {voiceResult.extractedDetails && Object.values(voiceResult.extractedDetails).some(v => v) && (
+                    <div className="mb-3 p-3 bg-white/60 dark:bg-slate-800/60 rounded-lg">
+                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase">Extracted Details</p>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {voiceResult.extractedDetails.location && (
+                          <div>
+                            <span className="text-xs text-slate-400">Location:</span>
+                            <p className="text-slate-700 dark:text-slate-300 font-medium">{voiceResult.extractedDetails.location}</p>
+                          </div>
+                        )}
+                        {voiceResult.extractedDetails.equipment && (
+                          <div>
+                            <span className="text-xs text-slate-400">Equipment:</span>
+                            <p className="text-slate-700 dark:text-slate-300 font-medium">{voiceResult.extractedDetails.equipment}</p>
+                          </div>
+                        )}
+                        {voiceResult.extractedDetails.dateOrExpiry && (
+                          <div>
+                            <span className="text-xs text-slate-400">Date/Expiry:</span>
+                            <p className="text-slate-700 dark:text-slate-300 font-medium">{voiceResult.extractedDetails.dateOrExpiry}</p>
+                          </div>
+                        )}
+                        {voiceResult.extractedDetails.quantity && (
+                          <div>
+                            <span className="text-xs text-slate-400">Quantity:</span>
+                            <p className="text-slate-700 dark:text-slate-300 font-medium">{voiceResult.extractedDetails.quantity}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Key Observations */}
                   {voiceResult.keyObservations && voiceResult.keyObservations.length > 0 && (
                     <div className="mb-3">
                       <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Key Observations:</p>
                       <ul className="space-y-1">
                         {voiceResult.keyObservations.map((obs, i) => (
                           <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
-                            <span className="text-indigo-500">-</span>
+                            <span className="text-indigo-500">•</span>
                             <span>{obs}</span>
                           </li>
                         ))}
@@ -734,8 +918,9 @@ export default function QuestionItem({
                     </div>
                   )}
 
+                  {/* Recommended Action */}
                   {voiceResult.recommendedAction && (
-                    <div className="p-3 bg-white/50 dark:bg-slate-800/50 rounded-lg">
+                    <div className="p-3 bg-white/60 dark:bg-slate-800/60 rounded-lg">
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
                           Recommended Action
@@ -842,8 +1027,33 @@ export default function QuestionItem({
                   exit={{ height: 0, opacity: 0 }}
                   className="mt-4 p-4 bg-amazon-orange/5 border border-amazon-orange/20 rounded-xl space-y-3"
                 >
-                  <div className="text-xs font-bold text-amazon-orange uppercase">
-                    New Action
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-bold text-amazon-orange uppercase">
+                      New Action
+                    </div>
+                    {/* Auto-Suggest Button */}
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleAutoSuggestAction}
+                      disabled={isAutoSuggesting}
+                      className={`py-1.5 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
+                        isAutoSuggesting
+                          ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-500 cursor-wait'
+                          : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-sm'
+                      }`}
+                    >
+                      {isAutoSuggesting ? (
+                        <>
+                          <Loader2 size={12} className="animate-spin" />
+                          <span>Suggesting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={12} />
+                          <span>Auto-Suggest</span>
+                        </>
+                      )}
+                    </motion.button>
                   </div>
 
                   {/* Priority selection */}
