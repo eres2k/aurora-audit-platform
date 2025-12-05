@@ -16,6 +16,7 @@ const STATIONS = [
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [selectedStation, setSelectedStation] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,16 +37,37 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    // Register existing user in our database
+    // Load saved role from localStorage
+    const savedRole = localStorage.getItem('userRole');
+    if (savedRole) {
+      setUserRole(savedRole);
+    }
+
+    // Register existing user in our database and get their role
     if (currentUser) {
+      // Default to Admin if no role is set (first user scenario)
+      const storedRole = currentUser.app_metadata?.role || localStorage.getItem('userRole') || 'Admin';
       usersApi.register({
         id: currentUser.id,
         email: currentUser.email,
         name: currentUser.user_metadata?.full_name || currentUser.email.split('@')[0],
-        role: currentUser.app_metadata?.role || 'Auditor',
+        role: storedRole,
         avatar: currentUser.user_metadata?.avatar_url || null,
+      }).then(response => {
+        // Use the role from the server if available
+        if (response?.user?.role) {
+          setUserRole(response.user.role);
+          localStorage.setItem('userRole', response.user.role);
+        } else if (!savedRole) {
+          setUserRole(storedRole);
+          localStorage.setItem('userRole', storedRole);
+        }
       }).catch(error => {
         console.error('Failed to register existing user:', error);
+        // Fall back to stored role or default
+        if (!savedRole) {
+          setUserRole(storedRole);
+        }
       });
     }
 
@@ -56,25 +78,41 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       netlifyIdentity.close();
 
-      // Register user in our database
+      // Register user in our database and get their role
       try {
-        await usersApi.register({
+        // Default to Admin if no role is set (first user scenario)
+        const storedRole = user.app_metadata?.role || localStorage.getItem('userRole') || 'Admin';
+        const response = await usersApi.register({
           id: user.id,
           email: user.email,
           name: user.user_metadata?.full_name || user.email.split('@')[0],
-          role: user.app_metadata?.role || 'Auditor',
+          role: storedRole,
           avatar: user.user_metadata?.avatar_url || null,
         });
+        // Use the role from the server if available
+        if (response?.user?.role) {
+          setUserRole(response.user.role);
+          localStorage.setItem('userRole', response.user.role);
+        } else {
+          setUserRole(storedRole);
+          localStorage.setItem('userRole', storedRole);
+        }
       } catch (error) {
         console.error('Failed to register user:', error);
+        // Fall back to stored role or default to Admin
+        const fallbackRole = user.app_metadata?.role || localStorage.getItem('userRole') || 'Admin';
+        setUserRole(fallbackRole);
+        localStorage.setItem('userRole', fallbackRole);
       }
     });
 
     // Listen for logout events
     netlifyIdentity.on('logout', () => {
       setUser(null);
+      setUserRole(null);
       setSelectedStation(null);
       localStorage.removeItem('selectedStation');
+      localStorage.removeItem('userRole');
     });
 
     // Cleanup
@@ -110,6 +148,7 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    userRole,
     selectedStation,
     stations: STATIONS,
     loading,
@@ -120,6 +159,7 @@ export const AuthProvider = ({ children }) => {
     getStationDetails,
     isAuthenticated: !!user,
     hasSelectedStation: !!selectedStation,
+    isAdmin: userRole === 'Admin' || user?.app_metadata?.role === 'Admin' || user?.user_metadata?.role === 'Admin',
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
