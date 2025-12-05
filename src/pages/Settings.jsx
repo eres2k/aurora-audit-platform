@@ -13,9 +13,11 @@ import {
   LogOut,
   MapPin,
   ChevronRight,
+  Check,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage, SUPPORTED_LANGUAGES } from '../context/LanguageContext';
 import { useAudits } from '../context/AuditContext';
 import { Card, Button, Modal } from '../components/ui';
 import toast from 'react-hot-toast';
@@ -23,9 +25,11 @@ import toast from 'react-hot-toast';
 export default function Settings() {
   const { user, selectedStation, stations, selectStation, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { language, setLanguage, currentLanguage, t } = useLanguage();
   const { audits, templates } = useAudits();
   const [showStationModal, setShowStationModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   const handleExportData = () => {
     const data = {
@@ -72,10 +76,10 @@ export default function Settings() {
       {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-display font-bold text-slate-900 dark:text-white">
-          Settings
+          {t('settingsTitle')}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Manage your account and app preferences
+          {t('settingsSubtitle')}
         </p>
       </div>
 
@@ -118,7 +122,7 @@ export default function Settings() {
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
           <SettingItem
             icon={isDark ? Moon : Sun}
-            title="Dark Mode"
+            title={t('darkMode')}
             description={isDark ? 'Dark theme is enabled' : 'Light theme is enabled'}
             action={
               <button
@@ -134,10 +138,10 @@ export default function Settings() {
           />
           <SettingItem
             icon={Globe}
-            title="Language"
-            description="English (US)"
+            title={t('language')}
+            description={`${currentLanguage?.flag} ${currentLanguage?.name}`}
             action={
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" onClick={() => setShowLanguageModal(true)}>
                 Change <ChevronRight size={16} />
               </Button>
             }
@@ -286,7 +290,7 @@ export default function Settings() {
               onClick={() => setShowDeleteModal(false)}
               className="flex-1"
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               variant="danger"
@@ -296,6 +300,41 @@ export default function Settings() {
               Delete All
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Language Selection Modal */}
+      <Modal
+        isOpen={showLanguageModal}
+        onClose={() => setShowLanguageModal(false)}
+        title={t('selectLanguage')}
+        size="md"
+      >
+        <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto">
+          {Object.values(SUPPORTED_LANGUAGES).map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => {
+                setLanguage(lang.code);
+                setShowLanguageModal(false);
+                toast.success(`Language changed to ${lang.name}`);
+              }}
+              className={`p-4 rounded-xl text-left transition-all flex items-center gap-3 ${
+                language === lang.code
+                  ? 'bg-amazon-orange text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              <span className="text-2xl">{lang.flag}</span>
+              <div className="flex-1">
+                <div className="font-semibold">{lang.name}</div>
+                <div className="text-sm opacity-80">{lang.code.toUpperCase()}</div>
+              </div>
+              {language === lang.code && (
+                <Check size={20} className="text-white" />
+              )}
+            </button>
+          ))}
         </div>
       </Modal>
     </div>

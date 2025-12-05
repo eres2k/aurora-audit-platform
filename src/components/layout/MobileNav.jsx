@@ -8,17 +8,19 @@ import {
   AlertCircle,
   BarChart3,
 } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Home', path: '/dashboard' },
-  { icon: ClipboardList, label: 'Audits', path: '/audits' },
-  { icon: Plus, label: 'New', path: '/audits/new', isAction: true },
-  { icon: AlertCircle, label: 'Actions', path: '/actions' },
-  { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+  { icon: LayoutDashboard, labelKey: 'dashboard', path: '/dashboard' },
+  { icon: ClipboardList, labelKey: 'audits', path: '/audits' },
+  { icon: Plus, labelKey: 'newAudit', path: '/audits/new', isAction: true },
+  { icon: AlertCircle, labelKey: 'actions', path: '/actions' },
+  { icon: BarChart3, labelKey: 'analytics', path: '/analytics' },
 ];
 
 export default function MobileNav() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 lg:hidden z-40">
@@ -48,7 +50,7 @@ export default function MobileNav() {
                 `}
               >
                 <item.icon size={24} />
-                <span className="text-xs font-medium">{item.label}</span>
+                <span className="text-xs font-medium">{t(item.labelKey)}</span>
               </NavLink>
             )
           )}
