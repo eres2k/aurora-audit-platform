@@ -290,9 +290,17 @@ export default function QuestionItem({
       if (response.success && response.data) {
         const result = response.data;
 
-        if (result.enhancedNote && onNoteChange) {
-          onNoteChange(result.enhancedNote);
-          toast.success('Note enhanced!');
+        if (result.enhancedNote) {
+          if (onNoteChange) {
+            onNoteChange(result.enhancedNote);
+            toast.success('Note enhanced!');
+          } else {
+            console.error('onNoteChange prop is not available');
+            toast.error('Unable to update note');
+          }
+        } else {
+          console.error('No enhanced note returned from AI:', result);
+          toast.error('AI returned empty response. Please try again.');
         }
       } else {
         throw new Error(response.error || 'Failed to enhance note');
@@ -549,10 +557,11 @@ export default function QuestionItem({
                     className="w-full text-sm p-3 pr-24 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 placeholder:text-red-300 dark:placeholder:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
                   />
                   {/* Button group for voice input and enhance note */}
-                  <div className="absolute right-2 top-2 flex gap-1">
+                  <div className="absolute right-2 top-2 flex gap-1 z-10">
                     {/* Microphone button for voice input */}
                     {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
                       <motion.button
+                        type="button"
                         whileTap={{ scale: 0.9 }}
                         onClick={startRecording}
                         className="w-8 h-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center shadow-sm transition-colors"
@@ -564,6 +573,7 @@ export default function QuestionItem({
                     {/* Enhance Note button */}
                     {note && note.trim().length >= 5 && !isEnhancingNote && (
                       <motion.button
+                        type="button"
                         whileTap={{ scale: 0.9 }}
                         onClick={handleEnhanceNote}
                         className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex items-center justify-center shadow-sm transition-colors"
