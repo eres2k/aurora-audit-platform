@@ -288,11 +288,15 @@ export default function QuestionItem({
       const response = await aiApi.enhanceNote(note, question.text);
 
       if (response.success && response.data) {
-        const result = response.data;
+        const rawResult = response.data;
+        const result = Array.isArray(rawResult)
+          ? rawResult.find(item => item?.enhancedNote || item?.enhanced_note) || rawResult[0]
+          : rawResult;
+        const enhancedNote = result?.enhancedNote || result?.enhanced_note;
 
-        if (result.enhancedNote) {
+        if (enhancedNote) {
           if (onNoteChange) {
-            onNoteChange(result.enhancedNote);
+            onNoteChange(enhancedNote);
             toast.success('Note enhanced!');
           } else {
             console.error('onNoteChange prop is not available');
