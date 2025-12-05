@@ -42,9 +42,21 @@ export default function Sidebar({ isOpen, onClose }) {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  // Check if user is admin
-  const isAdmin = user?.app_metadata?.role === 'Admin' ||
-                  user?.user_metadata?.role === 'Admin';
+  // Check if user is admin - check multiple possible locations for role
+  const getUserRole = (user) => {
+    // Check app_metadata.role (string)
+    if (user?.app_metadata?.role) return user.app_metadata.role;
+    // Check app_metadata.roles (array)
+    if (user?.app_metadata?.roles?.length > 0) return user.app_metadata.roles[0];
+    // Check user_metadata.role (string)
+    if (user?.user_metadata?.role) return user.user_metadata.role;
+    // Check user_metadata.roles (array)
+    if (user?.user_metadata?.roles?.length > 0) return user.user_metadata.roles[0];
+    return null;
+  };
+
+  const userRole = getUserRole(user);
+  const isAdmin = userRole === 'Admin' || userRole === 'admin';
 
   const handleLogout = () => {
     logout();

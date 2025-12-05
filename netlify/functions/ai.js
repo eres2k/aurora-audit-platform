@@ -655,33 +655,38 @@ Guidelines:
 - Add relevant safety standards or regulations if applicable
 - Use clear, professional language
 - Focus on what makes a complete and thorough inspection`
-    : `You are a professional translator and workplace safety expert. Your task is to translate an audit question and provide practical steps to verify/check the item.
+    : `You are a professional translator and workplace safety expert. Your task is to translate an audit question AND ALL inspection guidance into ${targetLanguageName}.
+
+CRITICAL: ALL text in your response MUST be written in ${targetLanguageName}. Do NOT write any content in English.
 
 Original audit question (in English):
 "${questionText}"
 
-Target language: ${targetLanguageName} (${targetLanguage})
+Target language: ${targetLanguageName} (language code: ${targetLanguage})
 
-Translate the question and provide practical guidance for an auditor who speaks ${targetLanguageName}. Return a JSON object:
+Translate EVERYTHING and provide practical guidance for an auditor who speaks ${targetLanguageName}. Return a JSON object with ALL fields in ${targetLanguageName}:
 {
-  "translatedQuestion": "The audit question translated to ${targetLanguageName}",
+  "translatedQuestion": "[The audit question FULLY TRANSLATED to ${targetLanguageName}]",
   "stepsToCheck": [
-    "Step 1: Practical instruction in ${targetLanguageName} on how to verify this item",
-    "Step 2: What specific things to look for",
-    "Step 3: What to document if there's an issue",
-    "Additional relevant steps as needed"
+    "[Step 1 in ${targetLanguageName}: Practical instruction on how to verify this item]",
+    "[Step 2 in ${targetLanguageName}: What specific things to look for]",
+    "[Step 3 in ${targetLanguageName}: What to document if there's an issue]",
+    "[Additional steps in ${targetLanguageName} as needed]"
   ],
-  "keywords": ["Key terms in ${targetLanguageName} that the auditor should know"],
-  "tips": "Any additional tips or context in ${targetLanguageName} that would help the auditor"
+  "keywords": ["[Important term 1 in ${targetLanguageName}]", "[Important term 2 in ${targetLanguageName}]"],
+  "tips": "[Practical tips and context WRITTEN IN ${targetLanguageName}]"
 }
 
-Guidelines:
-- Translate naturally, not word-for-word
+IMPORTANT GUIDELINES:
+- EVERY SINGLE WORD in your response must be in ${targetLanguageName} - no English at all!
+- translatedQuestion: Must be in ${targetLanguageName}
+- stepsToCheck: Every step must be written entirely in ${targetLanguageName}
+- keywords: All keywords must be in ${targetLanguageName}
+- tips: The entire tips text must be in ${targetLanguageName}
+- Translate naturally, using proper ${targetLanguageName} grammar and expressions
 - Steps should be practical and actionable for someone doing a physical inspection
 - Include specific things to look for, measure, or verify
-- Keep the safety/compliance context in mind
-- Use professional but accessible language
-- All output text should be in ${targetLanguageName}`;
+- Use professional but accessible ${targetLanguageName} language`;
 
   const result = await model.generateContent(prompt);
   const response = result.response;
