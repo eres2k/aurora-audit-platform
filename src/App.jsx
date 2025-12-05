@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { AuditProvider } from './context/AuditContext';
 import { Layout } from './components/layout';
 import LoginPage from './components/LoginPage';
@@ -86,9 +87,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
-        <AuthProvider>
-          <AuditProvider>
-            <Toaster
+        <LanguageProvider>
+          <AuthProvider>
+            <AuditProvider>
+              <Toaster
               position="top-center"
               toastOptions={{
                 className: 'font-body',
@@ -113,9 +115,10 @@ export default function App() {
                 },
               }}
             />
-            <AppRoutes />
-          </AuditProvider>
-        </AuthProvider>
+              <AppRoutes />
+            </AuditProvider>
+          </AuthProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </BrowserRouter>
   );

@@ -617,6 +617,58 @@ Owner Guidelines:
   }
 };
 
+// Translate audit question to target language with practical steps
+const handleTranslateQuestion = async (questionText, targetLanguage, targetLanguageName) => {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const prompt = `You are a professional translator and workplace safety expert. Your task is to translate an audit question and provide practical steps to verify/check the item.
+
+Original audit question (in English):
+"${questionText}"
+
+Target language: ${targetLanguageName} (${targetLanguage})
+
+Translate the question and provide practical guidance for an auditor who speaks ${targetLanguageName}. Return a JSON object:
+{
+  "translatedQuestion": "The audit question translated to ${targetLanguageName}",
+  "stepsToCheck": [
+    "Step 1: Practical instruction in ${targetLanguageName} on how to verify this item",
+    "Step 2: What specific things to look for",
+    "Step 3: What to document if there's an issue",
+    "Additional relevant steps as needed"
+  ],
+  "keywords": ["Key terms in ${targetLanguageName} that the auditor should know"],
+  "tips": "Any additional tips or context in ${targetLanguageName} that would help the auditor"
+}
+
+Guidelines:
+- Translate naturally, not word-for-word
+- Steps should be practical and actionable for someone doing a physical inspection
+- Include specific things to look for, measure, or verify
+- Keep the safety/compliance context in mind
+- Use professional but accessible language
+- All output text should be in ${targetLanguageName}`;
+
+  const result = await model.generateContent(prompt);
+  const response = result.response;
+  const text = response.text();
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    throw new Error('Failed to parse AI response as JSON');
+  }
+};
+
 // Analyze image for safety compliance
 const handleAnalyzeImage = async (imageBase64, question) => {
   const model = genAI.getGenerativeModel({
@@ -710,7 +762,7 @@ export const handler = async (event, context) => {
 
   try {
     const body = JSON.parse(event.body);
-    const { action, audit, template, imageBase64, question, prompt, category, transcript, questionContext, conversationHistory, noteText, analysisContext } = body;
+    const { action, audit, template, imageBase64, question, prompt, category, transcript, questionContext, conversationHistory, noteText, analysisContext, targetLanguage, targetLanguageName } = body;
 
     if (!action) {
       return jsonResponse({ error: 'Action is required' }, 400);
@@ -780,6 +832,16 @@ export const handler = async (event, context) => {
           return jsonResponse({ error: 'Question text is required for action suggestion' }, 400);
         }
         result = await handleAutoSuggestAction(question, noteText, analysisContext);
+        break;
+
+      case 'translate_question':
+        if (!question) {
+          return jsonResponse({ error: 'Question text is required for translation' }, 400);
+        }
+        if (!targetLanguage || !targetLanguageName) {
+          return jsonResponse({ error: 'Target language is required for translation' }, 400);
+        }
+        result = await handleTranslateQuestion(question, targetLanguage, targetLanguageName);
         break;
 
       default:

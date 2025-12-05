@@ -19,15 +19,23 @@ import {
   Eye,
   RefreshCw,
   Camera,
+  Edit3,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAudits } from '../context/AuditContext';
+import { useLanguage } from '../context/LanguageContext';
 import { Button, Card, Input, Modal } from '../components/ui';
 import { aiApi } from '../utils/api';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function Templates() {
   const navigate = useNavigate();
-  const { templates, createTemplate, deleteTemplate } = useAudits();
+  const { templates, createTemplate, deleteTemplate, updateTemplate } = useAudits();
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [showNewTemplateModal, setShowNewTemplateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -35,6 +43,11 @@ export default function Templates() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Edit template state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [expandedSections, setExpandedSections] = useState({});
 
   // AI Template Generation state
   const [aiMode, setAiMode] = useState('text'); // 'text' or 'image'
@@ -154,6 +167,136 @@ export default function Templates() {
     if (aiImageInputRef.current) {
       aiImageInputRef.current.value = '';
     }
+  };
+
+  // Open edit modal with template data
+  const handleEditTemplate = (template) => {
+    // Deep clone the template to avoid mutating the original
+    setEditingTemplate(JSON.parse(JSON.stringify(template)));
+    // Expand all sections by default
+    const expanded = {};
+    template.sections?.forEach(section => {
+      expanded[section.id] = true;
+    });
+    setExpandedSections(expanded);
+    setShowEditModal(true);
+  };
+
+  // Save edited template
+  const handleSaveEditedTemplate = async () => {
+    if (!editingTemplate) return;
+
+    // Validate
+    if (!editingTemplate.title?.trim()) {
+      toast.error(t('templateName') + ' is required');
+      return;
+    }
+    if (!editingTemplate.sections?.length) {
+      toast.error('At least one section is required');
+      return;
+    }
+
+    try {
+      await updateTemplate(editingTemplate.id, editingTemplate);
+      toast.success('Template updated successfully');
+      setShowEditModal(false);
+      setEditingTemplate(null);
+    } catch (error) {
+      toast.error(error.message || 'Failed to update template');
+    }
+  };
+
+  // Update editing template field
+  const updateEditingField = (field, value) => {
+    setEditingTemplate(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Update section in editing template
+  const updateSection = (sectionId, field, value) => {
+    setEditingTemplate(prev => ({
+      ...prev,
+      sections: prev.sections.map(s =>
+        s.id === sectionId ? { ...s, [field]: value } : s
+      ),
+    }));
+  };
+
+  // Add new section
+  const addSection = () => {
+    const newSection = {
+      id: `sec-${uuidv4().slice(0, 8)}`,
+      title: 'New Section',
+      items: [],
+    };
+    setEditingTemplate(prev => ({
+      ...prev,
+      sections: [...prev.sections, newSection],
+    }));
+    setExpandedSections(prev => ({ ...prev, [newSection.id]: true }));
+  };
+
+  // Delete section
+  const deleteSection = (sectionId) => {
+    setEditingTemplate(prev => ({
+      ...prev,
+      sections: prev.sections.filter(s => s.id !== sectionId),
+    }));
+  };
+
+  // Update question in editing template
+  const updateQuestion = (sectionId, questionId, field, value) => {
+    setEditingTemplate(prev => ({
+      ...prev,
+      sections: prev.sections.map(s =>
+        s.id === sectionId
+          ? {
+              ...s,
+              items: s.items.map(q =>
+                q.id === questionId ? { ...q, [field]: value } : q
+              ),
+            }
+          : s
+      ),
+    }));
+  };
+
+  // Add new question to section
+  const addQuestion = (sectionId) => {
+    const newQuestion = {
+      id: `q-${uuidv4().slice(0, 8)}`,
+      text: 'New Question',
+      type: 'bool',
+      required: false,
+      critical: false,
+    };
+    setEditingTemplate(prev => ({
+      ...prev,
+      sections: prev.sections.map(s =>
+        s.id === sectionId
+          ? { ...s, items: [...s.items, newQuestion] }
+          : s
+      ),
+    }));
+  };
+
+  // Delete question from section
+  const deleteQuestion = (sectionId, questionId) => {
+    setEditingTemplate(prev => ({
+      ...prev,
+      sections: prev.sections.map(s =>
+        s.id === sectionId
+          ? { ...s, items: s.items.filter(q => q.id !== questionId) }
+          : s
+      ),
+    }));
+  };
+
+  // Toggle section expand/collapse
+  const toggleSection = (sectionId) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
   };
 
   const filteredTemplates = templates.filter(template =>
@@ -401,13 +544,24 @@ export default function Templates() {
                   <Trash2 size={16} />
                 </Button>
                 <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditTemplate(template);
+                  }}
+                  className="text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                >
+                  <Edit3 size={16} />
+                </Button>
+                <Button
                   variant="primary"
                   size="sm"
                   icon={Play}
                   className="flex-1"
                   onClick={() => navigate(`/audits/new?template=${template.id}`)}
                 >
-                  Start Audit
+                  {t('startAudit')}
                 </Button>
               </div>
             </Card>
@@ -791,7 +945,7 @@ export default function Templates() {
           setShowDeleteModal(false);
           setTemplateToDelete(null);
         }}
-        title="Delete Template"
+        title={t('deleteTemplate')}
         size="sm"
       >
         <div className="space-y-4">
@@ -799,10 +953,10 @@ export default function Templates() {
             <AlertCircle className="text-red-500 flex-shrink-0" size={24} />
             <div>
               <p className="font-medium text-red-800 dark:text-red-200">
-                Are you sure you want to delete this template?
+                {t('deleteTemplateConfirm')}
               </p>
               <p className="text-sm text-red-600 dark:text-red-400 mt-1">
-                "{templateToDelete?.title}" will be permanently removed.
+                "{templateToDelete?.title}" {t('templateWillBeRemoved')}
               </p>
             </div>
           </div>
@@ -815,7 +969,7 @@ export default function Templates() {
               }}
               className="flex-1"
             >
-              Cancel
+              {t('cancel')}
             </Button>
             <Button
               variant="danger"
@@ -823,10 +977,246 @@ export default function Templates() {
               onClick={handleDeleteTemplate}
               className="flex-1"
             >
-              Delete
+              {t('delete')}
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Edit Template Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingTemplate(null);
+        }}
+        title={t('editTemplate')}
+        size="xl"
+      >
+        {editingTemplate && (
+          <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+            {/* Basic Info */}
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                  {t('templateName')} *
+                </label>
+                <input
+                  type="text"
+                  value={editingTemplate.title || ''}
+                  onChange={(e) => updateEditingField('title', e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 border-none focus:ring-2 focus:ring-amazon-orange/50 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none"
+                  placeholder="Template name..."
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                  {t('description')}
+                </label>
+                <textarea
+                  value={editingTemplate.description || ''}
+                  onChange={(e) => updateEditingField('description', e.target.value)}
+                  rows={2}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 border-none resize-none focus:ring-2 focus:ring-amazon-orange/50 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none"
+                  placeholder="Template description..."
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                    {t('category')}
+                  </label>
+                  <select
+                    value={editingTemplate.category || 'Safety'}
+                    onChange={(e) => updateEditingField('category', e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 border-none focus:ring-2 focus:ring-amazon-orange/50 text-slate-900 dark:text-white outline-none"
+                  >
+                    <option value="Safety">Safety</option>
+                    <option value="Quality">Quality</option>
+                    <option value="Compliance">Compliance</option>
+                    <option value="Operations">Operations</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                    {t('estimatedTime')} ({t('min')})
+                  </label>
+                  <input
+                    type="number"
+                    value={editingTemplate.estimatedTime || 15}
+                    onChange={(e) => updateEditingField('estimatedTime', parseInt(e.target.value) || 15)}
+                    min={1}
+                    className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-700 border-none focus:ring-2 focus:ring-amazon-orange/50 text-slate-900 dark:text-white outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Sections */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-slate-900 dark:text-white">
+                  {t('sections')} ({editingTemplate.sections?.length || 0})
+                </h3>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={Plus}
+                  onClick={addSection}
+                >
+                  {t('addSection')}
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {editingTemplate.sections?.map((section, sectionIndex) => (
+                  <div
+                    key={section.id}
+                    className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden"
+                  >
+                    {/* Section Header */}
+                    <div
+                      className="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-800 cursor-pointer"
+                      onClick={() => toggleSection(section.id)}
+                    >
+                      <GripVertical size={16} className="text-slate-400" />
+                      <input
+                        type="text"
+                        value={section.title || ''}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          updateSection(section.id, 'title', e.target.value);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 bg-transparent border-none font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-0"
+                        placeholder="Section title..."
+                      />
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {section.items?.length || 0} {t('questions').toLowerCase()}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteSection(section.id);
+                        }}
+                        className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
+                      >
+                        <X size={16} />
+                      </button>
+                      {expandedSections[section.id] ? (
+                        <ChevronUp size={16} className="text-slate-400" />
+                      ) : (
+                        <ChevronDown size={16} className="text-slate-400" />
+                      )}
+                    </div>
+
+                    {/* Section Content */}
+                    <AnimatePresence>
+                      {expandedSections[section.id] && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="px-4 py-3 space-y-2"
+                        >
+                          {section.items?.map((question, questionIndex) => (
+                            <div
+                              key={question.id}
+                              className="flex items-start gap-3 p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-700"
+                            >
+                              <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-500 flex-shrink-0 mt-1">
+                                {questionIndex + 1}
+                              </span>
+                              <div className="flex-1 space-y-2">
+                                <textarea
+                                  value={question.text || ''}
+                                  onChange={(e) => updateQuestion(section.id, question.id, 'text', e.target.value)}
+                                  rows={2}
+                                  className="w-full px-3 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-amazon-orange/50 text-slate-900 dark:text-white outline-none resize-none"
+                                  placeholder="Question text..."
+                                />
+                                <div className="flex items-center gap-4 flex-wrap">
+                                  <select
+                                    value={question.type || 'bool'}
+                                    onChange={(e) => updateQuestion(section.id, question.id, 'type', e.target.value)}
+                                    className="px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                                  >
+                                    <option value="bool">Yes/No</option>
+                                    <option value="rating">Rating (1-5)</option>
+                                    <option value="text">Text</option>
+                                    <option value="photo">Photo</option>
+                                  </select>
+                                  <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
+                                    <input
+                                      type="checkbox"
+                                      checked={question.required || false}
+                                      onChange={(e) => updateQuestion(section.id, question.id, 'required', e.target.checked)}
+                                      className="rounded border-slate-300 text-amazon-orange focus:ring-amazon-orange"
+                                    />
+                                    {t('required')}
+                                  </label>
+                                  <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
+                                    <input
+                                      type="checkbox"
+                                      checked={question.critical || false}
+                                      onChange={(e) => updateQuestion(section.id, question.id, 'critical', e.target.checked)}
+                                      className="rounded border-slate-300 text-red-500 focus:ring-red-500"
+                                    />
+                                    {t('critical')}
+                                  </label>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => deleteQuestion(section.id, question.id)}
+                                className="p-1 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded flex-shrink-0"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          ))}
+
+                          {/* Add Question Button */}
+                          <button
+                            onClick={() => addQuestion(section.id)}
+                            className="w-full py-2 px-4 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-amazon-orange hover:text-amazon-orange transition-colors flex items-center justify-center gap-2 text-sm"
+                          >
+                            <Plus size={16} />
+                            {t('addQuestion')}
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingTemplate(null);
+                }}
+                className="flex-1"
+              >
+                {t('cancel')}
+              </Button>
+              <Button
+                variant="primary"
+                icon={CheckCircle}
+                onClick={handleSaveEditedTemplate}
+                className="flex-1"
+              >
+                {t('saveChanges')}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

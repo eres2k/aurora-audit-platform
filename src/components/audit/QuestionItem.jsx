@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X, Camera, AlertTriangle, Star, ChevronDown, MinusCircle, Plus, Trash2, Image, ClipboardList, Users, Sparkles, Loader2, Shield, XCircle, Mic, MicOff, Square, HelpCircle, Wand2, Zap } from 'lucide-react';
+import { Check, X, Camera, AlertTriangle, Star, ChevronDown, MinusCircle, Plus, Trash2, Image, ClipboardList, Users, Sparkles, Loader2, Shield, XCircle, Mic, MicOff, Square, HelpCircle, Wand2, Zap, Languages } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { aiApi } from '../../utils/api';
+import { useLanguage } from '../../context/LanguageContext';
 import PolicyChatbot from './PolicyChatbot';
 
 // Check if Web Speech API is available
@@ -53,6 +54,11 @@ export default function QuestionItem({
 
   // Auto-suggest Action state
   const [isAutoSuggesting, setIsAutoSuggesting] = useState(false);
+
+  // Translation state
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationResult, setTranslationResult] = useState(null);
+  const { language, currentLanguage, t } = useLanguage();
 
   // Initialize speech recognition
   useEffect(() => {
@@ -189,6 +195,42 @@ export default function QuestionItem({
     const message = `What are the Austrian ASchG (ArbeitnehmerInnenschutzgesetz) requirements and best practices for: "${question.text}"? Please provide relevant regulations, standards, and practical guidance.`;
     setHelpInitialMessage(message);
     setShowHelpChatbot(true);
+  };
+
+  // Translate question to local language with steps
+  const handleTranslateQuestion = async () => {
+    if (language === 'en') {
+      toast('Question is already in English', { icon: 'ℹ️' });
+      return;
+    }
+
+    // If already translated, just toggle the display
+    if (translationResult) {
+      setTranslationResult(null);
+      return;
+    }
+
+    setIsTranslating(true);
+
+    try {
+      const response = await aiApi.translateQuestion(
+        question.text,
+        language,
+        currentLanguage.name
+      );
+
+      if (response.success && response.data) {
+        setTranslationResult(response.data);
+        toast.success(t('translatedQuestion'));
+      } else {
+        throw new Error(response.error || 'Failed to translate question');
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast.error(error.message || 'Failed to translate question');
+    } finally {
+      setIsTranslating(false);
+    }
   };
 
   // Create action from recommendation
@@ -513,6 +555,30 @@ export default function QuestionItem({
             )}
           </div>
         </button>
+        {/* Translate button */}
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleTranslateQuestion();
+          }}
+          disabled={isTranslating}
+          className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${
+            translationResult
+              ? 'bg-blue-500 text-white'
+              : isTranslating
+              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-400'
+              : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+          }`}
+          title={t('translateQuestion')}
+        >
+          {isTranslating ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Languages size={16} />
+          )}
+        </motion.button>
         {/* Help button for ASchG info */}
         <motion.button
           whileHover={{ scale: 1.1 }}
@@ -522,7 +588,7 @@ export default function QuestionItem({
             openHelpChatbot();
           }}
           className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center hover:bg-teal-200 dark:hover:bg-teal-900/50 transition-colors flex-shrink-0"
-          title="Get ASchG regulations info"
+          title={t('getRegulationsInfo')}
         >
           <HelpCircle size={16} />
         </motion.button>
@@ -544,6 +610,88 @@ export default function QuestionItem({
             exit={{ height: 0, opacity: 0 }}
             className="px-5 pb-5"
           >
+            {/* Translation Result Display */}
+            <AnimatePresence>
+              {translationResult && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="mb-4 p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-300 dark:border-blue-700"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 flex items-center justify-center">
+                        <Languages size={16} className="text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                          {t('translatedQuestion')} ({currentLanguage?.flag} {currentLanguage?.name})
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setTranslationResult(null)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    >
+                      <XCircle size={18} />
+                    </button>
+                  </div>
+
+                  {/* Translated Question */}
+                  <div className="mb-3 p-3 bg-white/60 dark:bg-slate-800/60 rounded-lg">
+                    <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                      {translationResult.translatedQuestion}
+                    </p>
+                  </div>
+
+                  {/* Steps to Check */}
+                  {translationResult.stepsToCheck && translationResult.stepsToCheck.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase">
+                        {t('stepsToCheck')}
+                      </p>
+                      <ol className="space-y-2">
+                        {translationResult.stepsToCheck.map((step, i) => (
+                          <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
+                            <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
+                              {i + 1}
+                            </span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  {/* Keywords */}
+                  {translationResult.keywords && translationResult.keywords.length > 0 && (
+                    <div className="mb-3">
+                      <div className="flex flex-wrap gap-1">
+                        {translationResult.keywords.map((keyword, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full"
+                          >
+                            {keyword}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tips */}
+                  {translationResult.tips && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                        💡 {translationResult.tips}
+                      </p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {renderInput()}
 
             {/* Note field for failed items */}

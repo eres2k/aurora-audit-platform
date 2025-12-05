@@ -352,6 +352,25 @@ export const aiApi = {
       }),
     });
   },
+
+  /**
+   * Translate an audit question to the target language with practical steps to check it
+   * @param {string} questionText - The audit question to translate
+   * @param {string} targetLanguage - The target language code (e.g., 'de', 'es', 'fr')
+   * @param {string} targetLanguageName - The full name of the target language (e.g., 'German', 'Spanish')
+   * @returns {Promise<Object>} Translated question with steps to verify/check the item
+   */
+  translateQuestion: async (questionText, targetLanguage, targetLanguageName) => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'translate_question',
+        question: questionText,
+        targetLanguage: targetLanguage,
+        targetLanguageName: targetLanguageName,
+      }),
+    });
+  },
 };
 
 export default {

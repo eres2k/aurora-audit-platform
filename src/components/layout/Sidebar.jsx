@@ -15,19 +15,21 @@ import {
   MapPin,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: ClipboardList, label: 'Audits', path: '/audits' },
-  { icon: FileText, label: 'Templates', path: '/templates' },
-  { icon: AlertCircle, label: 'Actions', path: '/actions' },
-  { icon: BarChart3, label: 'Analytics', path: '/analytics' },
-  { icon: Users, label: 'Team', path: '/team' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
+  { icon: LayoutDashboard, labelKey: 'dashboard', path: '/dashboard' },
+  { icon: ClipboardList, labelKey: 'audits', path: '/audits' },
+  { icon: FileText, labelKey: 'templates', path: '/templates' },
+  { icon: AlertCircle, labelKey: 'actions', path: '/actions' },
+  { icon: BarChart3, labelKey: 'analytics', path: '/analytics' },
+  { icon: Users, labelKey: 'team', path: '/team' },
+  { icon: Settings, labelKey: 'settings', path: '/settings' },
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
   const { logout, user, selectedStation } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -62,7 +64,7 @@ export default function Sidebar({ isOpen, onClose }) {
             }
           >
             <item.icon size={20} />
-            <span>{item.label}</span>
+            <span>{t(item.labelKey)}</span>
           </NavLink>
         ))}
       </nav>
