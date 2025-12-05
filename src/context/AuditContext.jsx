@@ -590,6 +590,8 @@ export function AuditProvider({ children }) {
       ...finalData,
       // Preserve the original createdBy - never overwrite with current user
       createdBy: audit.createdBy,
+      // Store who actually signed the audit (the current user completing it)
+      signedBy: user?.email || audit.createdBy,
       status: 'completed',
       score,
       completedAt: new Date().toISOString(),
