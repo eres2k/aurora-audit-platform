@@ -45,6 +45,7 @@ export default function AuditDetail() {
   // Export dialog state
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [includeAIInsights, setIncludeAIInsights] = useState(false);
+  const [includeActions, setIncludeActions] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
   const audit = audits.find(a => a.id === id);
@@ -86,9 +87,10 @@ export default function AuditDetail() {
         }
       }
 
-      const filename = generateAuditPDF(audit, template, auditActions, {
+      const filename = generateAuditPDF(audit, template, includeActions ? auditActions : [], {
         includeAIInsights,
         aiInsights: pdfInsights,
+        includeActions,
       });
       toast.success(`Downloaded ${filename}`, { id: 'pdf-export' });
       setShowExportDialog(false);
@@ -232,7 +234,34 @@ export default function AuditDetail() {
               </div>
 
               {/* Export Options */}
-              <div className="space-y-4 mb-6">
+              <div className="space-y-3 mb-6">
+                {/* Include Actions Option */}
+                <label className="flex items-start gap-4 p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:border-amazon-orange/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={includeActions}
+                    onChange={(e) => setIncludeActions(e.target.checked)}
+                    className="mt-1 w-5 h-5 rounded border-slate-300 text-amazon-orange focus:ring-amazon-orange"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <ClipboardList size={18} className="text-red-500" />
+                      <span className="font-medium text-slate-900 dark:text-white">
+                        Include Related Actions
+                      </span>
+                      {auditActions.length > 0 && (
+                        <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full">
+                          {auditActions.length}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      Attach all corrective actions and follow-ups linked to this audit
+                    </p>
+                  </div>
+                </label>
+
+                {/* Include AI Insights Option */}
                 <label className="flex items-start gap-4 p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:border-amazon-orange/50 transition-colors">
                   <input
                     type="checkbox"
@@ -244,11 +273,11 @@ export default function AuditDetail() {
                     <div className="flex items-center gap-2">
                       <Sparkles size={18} className="text-purple-500" />
                       <span className="font-medium text-slate-900 dark:text-white">
-                        Include Audit Insights
+                        Include AI Insights
                       </span>
                     </div>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                      Add generated summary, findings, recommendations, and risk analysis to your report
+                      Add AI-generated summary, findings, recommendations, and risk analysis
                     </p>
                   </div>
                 </label>

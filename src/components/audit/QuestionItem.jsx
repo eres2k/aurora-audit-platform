@@ -277,8 +277,8 @@ export default function QuestionItem({
 
   // Handle enhance note with AI
   const handleEnhanceNote = async () => {
-    if (!note || note.trim().length < 5) {
-      toast.error('Please write a note first (at least 5 characters)');
+    if (!note || note.trim().length < 3) {
+      toast.error('Please write a note first (at least 3 characters)');
       return;
     }
 
@@ -540,53 +540,45 @@ export default function QuestionItem({
                 <label className="text-xs font-bold text-red-600 uppercase mb-2 block">
                   Describe the issue
                 </label>
-                <div className="relative">
-                  <textarea
-                    value={note || ''}
-                    onChange={(e) => onNoteChange && onNoteChange(e.target.value)}
-                    placeholder="Describe the problem..."
-                    rows={2}
-                    className="w-full text-sm p-3 pr-24 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 placeholder:text-red-300 dark:placeholder:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
-                  />
-                  {/* Button group for voice input and enhance note */}
-                  <div className="absolute right-2 top-2 flex gap-1">
-                    {/* Microphone button for voice input */}
-                    {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
-                      <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={startRecording}
-                        className="w-8 h-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center shadow-sm transition-colors"
-                        title="Voice input"
-                      >
-                        <Mic size={16} />
-                      </motion.button>
-                    )}
-                    {/* Enhance Note button */}
-                    {note && note.trim().length >= 5 && !isEnhancingNote && (
-                      <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={handleEnhanceNote}
-                        className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex items-center justify-center shadow-sm transition-colors"
-                        title="Enhance Note with AI"
-                      >
-                        <Wand2 size={16} />
-                      </motion.button>
-                    )}
-                    {/* Loading state for enhance */}
-                    {isEnhancingNote && (
-                      <div className="w-8 h-8 rounded-lg bg-purple-500 text-white flex items-center justify-center">
-                        <Loader2 size={16} className="animate-spin" />
-                      </div>
-                    )}
-                  </div>
+                <textarea
+                  value={note || ''}
+                  onChange={(e) => onNoteChange && onNoteChange(e.target.value)}
+                  placeholder="Describe the problem..."
+                  rows={2}
+                  className="w-full text-sm p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 placeholder:text-red-300 dark:placeholder:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
+                />
+                {/* AI Note Tools - Prominent buttons below textarea */}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {/* Voice Input Button */}
+                  {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={startRecording}
+                      className="flex items-center gap-2 py-2 px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-sm font-medium shadow-md shadow-indigo-500/30 transition-all"
+                    >
+                      <Mic size={16} />
+                      <span>Voice Input</span>
+                    </motion.button>
+                  )}
+                  {/* Enhance Note Button - Always visible when note has content */}
+                  {note && note.trim().length >= 3 && !isEnhancingNote && (
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleEnhanceNote}
+                      className="flex items-center gap-2 py-2 px-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium shadow-md shadow-purple-500/30 transition-all"
+                    >
+                      <Wand2 size={16} />
+                      <span>Enhance Note</span>
+                    </motion.button>
+                  )}
+                  {/* Loading state for enhance */}
+                  {isEnhancingNote && (
+                    <div className="flex items-center gap-2 py-2 px-4 rounded-xl bg-purple-500/50 text-white text-sm font-medium">
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Enhancing...</span>
+                    </div>
+                  )}
                 </div>
-                {/* Enhance Note hint */}
-                {note && note.trim().length >= 5 && !isEnhancingNote && (
-                  <p className="mt-1 text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                    <Wand2 size={10} />
-                    Click the wand icon to enhance your note with AI
-                  </p>
-                )}
               </div>
             )}
 
