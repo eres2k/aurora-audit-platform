@@ -85,9 +85,17 @@ export default function UserManagement() {
   const [editingRole, setEditingRole] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Check if current user is admin
-  const isAdmin = currentUser?.app_metadata?.role === 'Admin' ||
-                  currentUser?.user_metadata?.role === 'Admin';
+  // Check if current user is admin - check multiple possible locations for role
+  const getUserRole = (user) => {
+    if (user?.app_metadata?.role) return user.app_metadata.role;
+    if (user?.app_metadata?.roles?.length > 0) return user.app_metadata.roles[0];
+    if (user?.user_metadata?.role) return user.user_metadata.role;
+    if (user?.user_metadata?.roles?.length > 0) return user.user_metadata.roles[0];
+    return null;
+  };
+
+  const currentUserRole = getUserRole(currentUser);
+  const isAdmin = currentUserRole === 'Admin' || currentUserRole === 'admin';
 
   // Load users
   const loadUsers = async () => {
