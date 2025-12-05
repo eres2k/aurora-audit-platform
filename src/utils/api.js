@@ -284,6 +284,40 @@ export const aiApi = {
   },
 
   /**
+   * Enhance a risk note to make it more professional and concise
+   * @param {string} note - The original user note
+   * @param {string} questionContext - Context of the audit question
+   * @returns {Promise<Object>} Enhanced note text
+   */
+  enhanceNote: async (note, questionContext = '') => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'enhance_note',
+        note: note,
+        questionContext: questionContext,
+      }),
+    });
+  },
+
+  /**
+   * Suggest action details (description and priority) from a problem statement
+   * @param {string} problem - Description of the issue
+   * @param {string} questionContext - Context of the audit question
+   * @returns {Promise<Object>} Suggested action data
+   */
+  suggestAction: async (problem, questionContext = '') => {
+    return apiRequest('ai', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'suggest_action',
+        problem: problem,
+        questionContext: questionContext,
+      }),
+    });
+  },
+
+  /**
    * Ask the policy compliance chatbot a question
    * @param {string} question - The user's question about safety policies
    * @param {Array} conversationHistory - Previous messages for context [{role, content}]
