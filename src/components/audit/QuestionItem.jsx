@@ -54,6 +54,9 @@ export default function QuestionItem({
   // Auto-suggest Action state
   const [isAutoSuggesting, setIsAutoSuggesting] = useState(false);
 
+  // Auto-describe Issue state
+  const [isAutoDescribing, setIsAutoDescribing] = useState(false);
+
   // Initialize speech recognition
   useEffect(() => {
     if (isSpeechRecognitionSupported()) {
@@ -339,6 +342,34 @@ export default function QuestionItem({
     }
   };
 
+  // Handle auto-describe issue with AI
+  const handleAutoDescribeIssue = async () => {
+    setIsAutoDescribing(true);
+
+    try {
+      const response = await aiApi.autoDescribeIssue(
+        question.text,
+        safetyAnalysis
+      );
+
+      if (response.success && response.data) {
+        const result = response.data;
+
+        if (result.description && onNoteChange) {
+          onNoteChange(result.description);
+          toast.success('Issue description generated!');
+        }
+      } else {
+        throw new Error(response.error || 'Failed to describe issue');
+      }
+    } catch (error) {
+      console.error('Auto-describe issue error:', error);
+      toast.error(error.message || 'Failed to auto-describe issue');
+    } finally {
+      setIsAutoDescribing(false);
+    }
+  };
+
   const renderInput = () => {
     switch (question.type) {
       case 'bool':
@@ -537,56 +568,73 @@ export default function QuestionItem({
             {/* Note field for failed items */}
             {value === 'fail' && (
               <div className="mt-4 animate-in fade-in">
-                <label className="text-xs font-bold text-red-600 uppercase mb-2 block">
-                  Describe the issue
-                </label>
-                <div className="relative">
-                  <textarea
-                    value={note || ''}
-                    onChange={(e) => onNoteChange && onNoteChange(e.target.value)}
-                    placeholder="Describe the problem..."
-                    rows={2}
-                    className="w-full text-sm p-3 pr-24 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 placeholder:text-red-300 dark:placeholder:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
-                  />
-                  {/* Button group for voice input and enhance note */}
-                  <div className="absolute right-2 top-2 flex gap-1">
-                    {/* Microphone button for voice input */}
-                    {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
-                      <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={startRecording}
-                        className="w-8 h-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center shadow-sm transition-colors"
-                        title="Voice input"
-                      >
-                        <Mic size={16} />
-                      </motion.button>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-red-600 uppercase">
+                    Describe the issue
+                  </label>
+                  {/* AI Describe button - prominent */}
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleAutoDescribeIssue}
+                    disabled={isAutoDescribing}
+                    className={`py-1.5 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
+                      isAutoDescribing
+                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-500 cursor-wait'
+                        : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-sm'
+                    }`}
+                  >
+                    {isAutoDescribing ? (
+                      <>
+                        <Loader2 size={12} className="animate-spin" />
+                        <span>Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={12} />
+                        <span>AI Describe</span>
+                      </>
                     )}
-                    {/* Enhance Note button */}
-                    {note && note.trim().length >= 5 && !isEnhancingNote && (
-                      <motion.button
-                        whileTap={{ scale: 0.9 }}
-                        onClick={handleEnhanceNote}
-                        className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex items-center justify-center shadow-sm transition-colors"
-                        title="Enhance Note with AI"
-                      >
-                        <Wand2 size={16} />
-                      </motion.button>
-                    )}
-                    {/* Loading state for enhance */}
-                    {isEnhancingNote && (
-                      <div className="w-8 h-8 rounded-lg bg-purple-500 text-white flex items-center justify-center">
-                        <Loader2 size={16} className="animate-spin" />
-                      </div>
-                    )}
-                  </div>
+                  </motion.button>
                 </div>
-                {/* Enhance Note hint */}
-                {note && note.trim().length >= 5 && !isEnhancingNote && (
-                  <p className="mt-1 text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                    <Wand2 size={10} />
-                    Click the wand icon to enhance your note with AI
-                  </p>
-                )}
+                <textarea
+                  value={note || ''}
+                  onChange={(e) => onNoteChange && onNoteChange(e.target.value)}
+                  placeholder="Describe the problem... or use AI Describe to auto-generate"
+                  rows={2}
+                  className="w-full text-sm p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 placeholder:text-red-300 dark:placeholder:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
+                />
+                {/* Action buttons for voice input and enhance note - more visible */}
+                <div className="flex gap-2 mt-2">
+                  {/* Microphone button for voice input - prominent */}
+                  {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={startRecording}
+                      className="flex-1 py-2 px-3 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white text-xs font-medium flex items-center justify-center gap-2 shadow-sm transition-all"
+                    >
+                      <Mic size={14} />
+                      <span>Voice Input</span>
+                    </motion.button>
+                  )}
+                  {/* Enhance Note button */}
+                  {note && note.trim().length >= 5 && !isEnhancingNote && (
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleEnhanceNote}
+                      className="flex-1 py-2 px-3 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-medium flex items-center justify-center gap-2 shadow-sm transition-all"
+                    >
+                      <Wand2 size={14} />
+                      <span>Enhance Note</span>
+                    </motion.button>
+                  )}
+                  {/* Loading state for enhance */}
+                  {isEnhancingNote && (
+                    <div className="flex-1 py-2 px-3 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 text-xs font-medium flex items-center justify-center gap-2">
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Enhancing...</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
