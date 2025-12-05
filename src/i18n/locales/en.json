@@ -1,0 +1,161 @@
+{
+  "common": {
+    "appName": "AuditHub",
+    "tagline": "Safety Audits",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "change": "Change",
+    "export": "Export",
+    "clear": "Clear",
+    "manage": "Manage",
+    "signOut": "Sign Out",
+    "noStation": "No station",
+    "user": "User"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "audits": "Audits",
+    "templates": "Templates",
+    "actions": "Actions",
+    "analytics": "Analytics",
+    "team": "Team",
+    "settings": "Settings"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your account and app preferences",
+    "profile": {
+      "currentStation": "Current Station",
+      "noStationSelected": "No station selected"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "darkMode": "Dark Mode",
+      "darkEnabled": "Dark theme is enabled",
+      "lightEnabled": "Light theme is enabled",
+      "language": "Language",
+      "languageDescription": "Choose your preferred language",
+      "english": "English",
+      "german": "German (Deutsch)",
+      "serbian": "Serbian (Srpski)"
+    },
+    "notifications": {
+      "title": "Notifications",
+      "push": "Push Notifications",
+      "pushDescription": "Receive alerts for new actions"
+    },
+    "dataManagement": {
+      "title": "Data Management",
+      "export": "Export Data",
+      "exportDescription": "Download all your audits and templates",
+      "storage": "Storage Used",
+      "storageDescription": "{{audits}} audits, {{templates}} templates",
+      "clearData": "Clear All Data",
+      "clearDataDescription": "Permanently delete all local data",
+      "confirmClear": "This will permanently delete all your audits, templates, and settings. This action cannot be undone."
+    },
+    "account": {
+      "title": "Account",
+      "security": "Security",
+      "securityDescription": "Manage your account security"
+    },
+    "modals": {
+      "selectStation": "Select Station",
+      "clearAllData": "Clear All Data",
+      "deleteAll": "Delete All"
+    }
+  },
+  "policyAssistant": {
+    "title": "Policy Assistant",
+    "subtitle": "Austrian ASchG & OSHA Guidelines",
+    "greeting": "Hello! I'm the AuditHub Policy Assistant. I can help you with questions about Austrian workplace safety regulations (ASchG), OSHA standards, and general safety compliance. What would you like to know?",
+    "placeholder": "Ask about safety regulations...",
+    "searching": "Searching regulations...",
+    "errorMessage": "I apologize, but I encountered an error processing your question. Please try again or rephrase your question.",
+    "sources": "Sources",
+    "relatedTopics": "Related topics:",
+    "commonQuestions": "Common questions:",
+    "confidence": {
+      "high": "high confidence",
+      "medium": "medium confidence",
+      "low": "low confidence"
+    },
+    "quickQuestions": {
+      "walkwayWidth": "What is the minimum walkway width?",
+      "fireExtinguisher": "Fire extinguisher placement rules?",
+      "liftingWeight": "Maximum lifting weight?",
+      "emergencyExit": "Emergency exit requirements?"
+    },
+    "defaultTopics": {
+      "walkway": "Walkway clearance requirements",
+      "fireExtinguisher": "Fire extinguisher placement",
+      "ppe": "PPE requirements"
+    },
+    "viewPolicy": "View Policy",
+    "policyLinks": {
+      "aschg": "ASchG Full Text",
+      "aschgUrl": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910",
+      "osha": "OSHA Standards",
+      "oshaUrl": "https://www.osha.gov/laws-regs/regulations/standardnumber"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back",
+    "overview": "Here's your safety audit overview"
+  },
+  "audits": {
+    "title": "Audits",
+    "newAudit": "New Audit",
+    "noAudits": "No audits found",
+    "status": {
+      "completed": "Completed",
+      "inProgress": "In Progress",
+      "draft": "Draft"
+    }
+  },
+  "templates": {
+    "title": "Templates",
+    "newTemplate": "New Template",
+    "noTemplates": "No templates found"
+  },
+  "actions": {
+    "title": "Actions",
+    "newAction": "New Action",
+    "noActions": "No actions found",
+    "status": {
+      "open": "Open",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "overdue": "Overdue"
+    }
+  },
+  "analytics": {
+    "title": "Analytics",
+    "subtitle": "Track your safety performance"
+  },
+  "team": {
+    "title": "Team",
+    "subtitle": "Manage team members"
+  },
+  "login": {
+    "title": "Sign In",
+    "subtitle": "Welcome back to AuditHub",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "forgotPassword": "Forgot password?"
+  },
+  "toast": {
+    "dataExported": "Data exported successfully",
+    "dataCleared": "All data cleared",
+    "stationChanged": "Switched to {{station}}",
+    "languageChanged": "Language changed to {{language}}",
+    "errorOccurred": "An error occurred"
+  }
+}

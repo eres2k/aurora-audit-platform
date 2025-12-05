@@ -15,19 +15,21 @@ import {
   MapPin,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: ClipboardList, label: 'Audits', path: '/audits' },
-  { icon: FileText, label: 'Templates', path: '/templates' },
-  { icon: AlertCircle, label: 'Actions', path: '/actions' },
-  { icon: BarChart3, label: 'Analytics', path: '/analytics' },
-  { icon: Users, label: 'Team', path: '/team' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
+  { icon: LayoutDashboard, labelKey: 'nav.dashboard', path: '/dashboard' },
+  { icon: ClipboardList, labelKey: 'nav.audits', path: '/audits' },
+  { icon: FileText, labelKey: 'nav.templates', path: '/templates' },
+  { icon: AlertCircle, labelKey: 'nav.actions', path: '/actions' },
+  { icon: BarChart3, labelKey: 'nav.analytics', path: '/analytics' },
+  { icon: Users, labelKey: 'nav.team', path: '/team' },
+  { icon: Settings, labelKey: 'nav.settings', path: '/settings' },
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
   const { logout, user, selectedStation } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -44,9 +46,9 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
         <div>
           <h1 className="font-display font-bold text-lg text-slate-900 dark:text-white">
-            AuditHub
+            {t('common.appName')}
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Safety Audits</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('common.tagline')}</p>
         </div>
       </div>
 
@@ -62,7 +64,7 @@ export default function Sidebar({ isOpen, onClose }) {
             }
           >
             <item.icon size={20} />
-            <span>{item.label}</span>
+            <span>{t(item.labelKey)}</span>
           </NavLink>
         ))}
       </nav>
@@ -77,11 +79,11 @@ export default function Sidebar({ isOpen, onClose }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
-              {user?.user_metadata?.full_name || 'User'}
+              {user?.user_metadata?.full_name || t('common.user')}
             </p>
             <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
               <MapPin size={12} />
-              <span>{selectedStation || 'No station'}</span>
+              <span>{selectedStation || t('common.noStation')}</span>
             </div>
           </div>
           <button

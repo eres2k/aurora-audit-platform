@@ -1,0 +1,161 @@
+{
+  "common": {
+    "appName": "AuditHub",
+    "tagline": "Sicherheitsaudits",
+    "loading": "Laden...",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "close": "Schließen",
+    "change": "Ändern",
+    "export": "Exportieren",
+    "clear": "Löschen",
+    "manage": "Verwalten",
+    "signOut": "Abmelden",
+    "noStation": "Kein Standort",
+    "user": "Benutzer"
+  },
+  "nav": {
+    "dashboard": "Übersicht",
+    "audits": "Audits",
+    "templates": "Vorlagen",
+    "actions": "Maßnahmen",
+    "analytics": "Analysen",
+    "team": "Team",
+    "settings": "Einstellungen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "subtitle": "Verwalten Sie Ihr Konto und Ihre App-Einstellungen",
+    "profile": {
+      "currentStation": "Aktueller Standort",
+      "noStationSelected": "Kein Standort ausgewählt"
+    },
+    "appearance": {
+      "title": "Darstellung",
+      "darkMode": "Dunkelmodus",
+      "darkEnabled": "Dunkles Design ist aktiviert",
+      "lightEnabled": "Helles Design ist aktiviert",
+      "language": "Sprache",
+      "languageDescription": "Wählen Sie Ihre bevorzugte Sprache",
+      "english": "Englisch (English)",
+      "german": "Deutsch",
+      "serbian": "Serbisch (Srpski)"
+    },
+    "notifications": {
+      "title": "Benachrichtigungen",
+      "push": "Push-Benachrichtigungen",
+      "pushDescription": "Erhalten Sie Benachrichtigungen für neue Maßnahmen"
+    },
+    "dataManagement": {
+      "title": "Datenverwaltung",
+      "export": "Daten exportieren",
+      "exportDescription": "Laden Sie alle Ihre Audits und Vorlagen herunter",
+      "storage": "Speichernutzung",
+      "storageDescription": "{{audits}} Audits, {{templates}} Vorlagen",
+      "clearData": "Alle Daten löschen",
+      "clearDataDescription": "Alle lokalen Daten dauerhaft löschen",
+      "confirmClear": "Dadurch werden alle Ihre Audits, Vorlagen und Einstellungen dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."
+    },
+    "account": {
+      "title": "Konto",
+      "security": "Sicherheit",
+      "securityDescription": "Verwalten Sie Ihre Kontosicherheit"
+    },
+    "modals": {
+      "selectStation": "Standort auswählen",
+      "clearAllData": "Alle Daten löschen",
+      "deleteAll": "Alle löschen"
+    }
+  },
+  "policyAssistant": {
+    "title": "Richtlinien-Assistent",
+    "subtitle": "Österreichisches ASchG & OSHA-Richtlinien",
+    "greeting": "Hallo! Ich bin der AuditHub Richtlinien-Assistent. Ich kann Ihnen bei Fragen zu österreichischen Arbeitsschutzvorschriften (ASchG), OSHA-Standards und allgemeiner Sicherheitskonformität helfen. Was möchten Sie wissen?",
+    "placeholder": "Fragen Sie zu Sicherheitsvorschriften...",
+    "searching": "Suche in Vorschriften...",
+    "errorMessage": "Es tut mir leid, aber bei der Verarbeitung Ihrer Frage ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut oder formulieren Sie Ihre Frage um.",
+    "sources": "Quellen",
+    "relatedTopics": "Verwandte Themen:",
+    "commonQuestions": "Häufige Fragen:",
+    "confidence": {
+      "high": "hohe Zuverlässigkeit",
+      "medium": "mittlere Zuverlässigkeit",
+      "low": "niedrige Zuverlässigkeit"
+    },
+    "quickQuestions": {
+      "walkwayWidth": "Was ist die Mindestbreite für Gehwege?",
+      "fireExtinguisher": "Regeln zur Platzierung von Feuerlöschern?",
+      "liftingWeight": "Maximales Hebegewicht?",
+      "emergencyExit": "Anforderungen an Notausgänge?"
+    },
+    "defaultTopics": {
+      "walkway": "Anforderungen an Gehwegfreiraum",
+      "fireExtinguisher": "Platzierung von Feuerlöschern",
+      "ppe": "PSA-Anforderungen"
+    },
+    "viewPolicy": "Richtlinie anzeigen",
+    "policyLinks": {
+      "aschg": "ASchG Volltext",
+      "aschgUrl": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910",
+      "osha": "OSHA-Standards",
+      "oshaUrl": "https://www.osha.gov/laws-regs/regulations/standardnumber"
+    }
+  },
+  "dashboard": {
+    "title": "Übersicht",
+    "welcome": "Willkommen zurück",
+    "overview": "Hier ist Ihre Übersicht der Sicherheitsaudits"
+  },
+  "audits": {
+    "title": "Audits",
+    "newAudit": "Neues Audit",
+    "noAudits": "Keine Audits gefunden",
+    "status": {
+      "completed": "Abgeschlossen",
+      "inProgress": "In Bearbeitung",
+      "draft": "Entwurf"
+    }
+  },
+  "templates": {
+    "title": "Vorlagen",
+    "newTemplate": "Neue Vorlage",
+    "noTemplates": "Keine Vorlagen gefunden"
+  },
+  "actions": {
+    "title": "Maßnahmen",
+    "newAction": "Neue Maßnahme",
+    "noActions": "Keine Maßnahmen gefunden",
+    "status": {
+      "open": "Offen",
+      "inProgress": "In Bearbeitung",
+      "completed": "Abgeschlossen",
+      "overdue": "Überfällig"
+    }
+  },
+  "analytics": {
+    "title": "Analysen",
+    "subtitle": "Verfolgen Sie Ihre Sicherheitsleistung"
+  },
+  "team": {
+    "title": "Team",
+    "subtitle": "Teammitglieder verwalten"
+  },
+  "login": {
+    "title": "Anmelden",
+    "subtitle": "Willkommen zurück bei AuditHub",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "signIn": "Anmelden",
+    "signUp": "Registrieren",
+    "forgotPassword": "Passwort vergessen?"
+  },
+  "toast": {
+    "dataExported": "Daten erfolgreich exportiert",
+    "dataCleared": "Alle Daten gelöscht",
+    "stationChanged": "Gewechselt zu {{station}}",
+    "languageChanged": "Sprache geändert zu {{language}}",
+    "errorOccurred": "Ein Fehler ist aufgetreten"
+  }
+}
