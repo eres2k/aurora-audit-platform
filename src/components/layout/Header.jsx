@@ -1,15 +1,86 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Menu, Bell, Search, Plus, Moon, Sun } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Menu, Bell, Search, Plus, Moon, Sun, Cloud, CloudOff, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { useAudits } from '../../context/AuditContext';
 import Button from '../ui/Button';
+
+// Sync status indicator component
+const SyncIndicator = ({ syncStatus, isOnline }) => {
+  const getStatusConfig = () => {
+    if (!isOnline) {
+      return {
+        icon: CloudOff,
+        color: 'text-slate-400',
+        bgColor: 'bg-slate-100 dark:bg-slate-800',
+        label: 'Offline',
+        animate: false,
+      };
+    }
+    switch (syncStatus) {
+      case 'syncing':
+        return {
+          icon: RefreshCw,
+          color: 'text-blue-500',
+          bgColor: 'bg-blue-50 dark:bg-blue-900/30',
+          label: 'Syncing...',
+          animate: true,
+        };
+      case 'synced':
+        return {
+          icon: CheckCircle2,
+          color: 'text-emerald-500',
+          bgColor: 'bg-emerald-50 dark:bg-emerald-900/30',
+          label: 'Synced',
+          animate: false,
+        };
+      case 'error':
+        return {
+          icon: AlertCircle,
+          color: 'text-red-500',
+          bgColor: 'bg-red-50 dark:bg-red-900/30',
+          label: 'Sync Error',
+          animate: false,
+        };
+      default:
+        return {
+          icon: Cloud,
+          color: 'text-slate-400',
+          bgColor: 'bg-slate-100 dark:bg-slate-800',
+          label: 'Ready',
+          animate: false,
+        };
+    }
+  };
+
+  const config = getStatusConfig();
+  const Icon = config.icon;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${config.bgColor} transition-colors`}
+      title={config.label}
+    >
+      <Icon
+        size={14}
+        className={`${config.color} ${config.animate ? 'animate-spin' : ''}`}
+      />
+      <span className={`text-xs font-medium ${config.color} hidden sm:inline`}>
+        {config.label}
+      </span>
+    </motion.div>
+  );
+};
 
 export default function Header({ onMenuClick }) {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
   const { user } = useAuth();
+  const { syncStatus, isOnline } = useAudits();
 
   return (
     <header className="sticky top-0 z-40 glass border-b border-slate-200 dark:border-slate-800">
@@ -39,6 +110,9 @@ export default function Header({ onMenuClick }) {
 
         {/* Right */}
         <div className="flex items-center gap-2">
+          {/* Sync Status Indicator */}
+          <SyncIndicator syncStatus={syncStatus} isOnline={isOnline} />
+
           <Button
             variant="primary"
             size="sm"

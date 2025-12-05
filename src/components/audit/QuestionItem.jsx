@@ -58,7 +58,17 @@ export default function QuestionItem({
   // Translation state
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationResult, setTranslationResult] = useState(null);
+  const [translationLanguage, setTranslationLanguage] = useState(null); // Track which language the translation was made for
   const { language, currentLanguage, t } = useLanguage();
+
+  // Clear translation result when language changes
+  useEffect(() => {
+    if (translationResult && translationLanguage && translationLanguage !== language) {
+      // Language changed, clear the cached translation so user can re-fetch in new language
+      setTranslationResult(null);
+      setTranslationLanguage(null);
+    }
+  }, [language, translationResult, translationLanguage]);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -199,9 +209,10 @@ export default function QuestionItem({
 
   // Translate question to local language with steps (also provides clarifying guidance for English)
   const handleTranslateQuestion = async () => {
-    // If already translated, just toggle the display
-    if (translationResult) {
+    // If already translated and same language, just toggle the display
+    if (translationResult && translationLanguage === language) {
       setTranslationResult(null);
+      setTranslationLanguage(null);
       return;
     }
 
@@ -220,6 +231,7 @@ export default function QuestionItem({
 
       if (response.success && response.data) {
         setTranslationResult(response.data);
+        setTranslationLanguage(language); // Track which language this translation is for
         toast.success(language === 'en' ? 'Guidance loaded' : t('translatedQuestion'));
       } else {
         throw new Error(response.error || 'Failed to get question guidance');
