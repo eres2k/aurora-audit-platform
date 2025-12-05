@@ -618,6 +618,7 @@ Owner Guidelines:
 };
 
 // Translate audit question to target language with practical steps
+// Also provides guidance for English users without translation
 const handleTranslateQuestion = async (questionText, targetLanguage, targetLanguageName) => {
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash',
@@ -626,7 +627,35 @@ const handleTranslateQuestion = async (questionText, targetLanguage, targetLangu
     },
   });
 
-  const prompt = `You are a professional translator and workplace safety expert. Your task is to translate an audit question and provide practical steps to verify/check the item.
+  // Different prompts for translation vs English guidance
+  const isEnglish = targetLanguage === 'en';
+
+  const prompt = isEnglish
+    ? `You are a workplace safety expert. Your task is to provide practical inspection guidance for an audit question.
+
+Audit question:
+"${questionText}"
+
+Provide practical guidance for an auditor. Return a JSON object:
+{
+  "translatedQuestion": "A clearer, more detailed version of the question if needed, or the original question",
+  "stepsToCheck": [
+    "Step 1: First practical thing to verify during inspection",
+    "Step 2: What specific things to look for or measure",
+    "Step 3: How to document findings properly",
+    "Step 4: Additional relevant verification steps"
+  ],
+  "keywords": ["Key safety/compliance terms the auditor should know"],
+  "tips": "Additional tips or context that would help the auditor perform a thorough inspection"
+}
+
+Guidelines:
+- Provide 3-5 practical, actionable steps for physical inspection
+- Include specific things to look for, measure, or verify
+- Add relevant safety standards or regulations if applicable
+- Use clear, professional language
+- Focus on what makes a complete and thorough inspection`
+    : `You are a professional translator and workplace safety expert. Your task is to translate an audit question and provide practical steps to verify/check the item.
 
 Original audit question (in English):
 "${questionText}"

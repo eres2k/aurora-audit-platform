@@ -197,13 +197,8 @@ export default function QuestionItem({
     setShowHelpChatbot(true);
   };
 
-  // Translate question to local language with steps
+  // Translate question to local language with steps (also provides clarifying guidance for English)
   const handleTranslateQuestion = async () => {
-    if (language === 'en') {
-      toast('Question is already in English', { icon: 'ℹ️' });
-      return;
-    }
-
     // If already translated, just toggle the display
     if (translationResult) {
       setTranslationResult(null);
@@ -213,21 +208,25 @@ export default function QuestionItem({
     setIsTranslating(true);
 
     try {
+      // For English users, we still provide clarifying steps and guidance
+      const targetLang = language === 'en' ? 'en' : language;
+      const targetLangName = language === 'en' ? 'English' : currentLanguage.name;
+
       const response = await aiApi.translateQuestion(
         question.text,
-        language,
-        currentLanguage.name
+        targetLang,
+        targetLangName
       );
 
       if (response.success && response.data) {
         setTranslationResult(response.data);
-        toast.success(t('translatedQuestion'));
+        toast.success(language === 'en' ? 'Guidance loaded' : t('translatedQuestion'));
       } else {
-        throw new Error(response.error || 'Failed to translate question');
+        throw new Error(response.error || 'Failed to get question guidance');
       }
     } catch (error) {
       console.error('Translation error:', error);
-      toast.error(error.message || 'Failed to translate question');
+      toast.error(error.message || 'Failed to get question guidance');
     } finally {
       setIsTranslating(false);
     }
@@ -571,7 +570,7 @@ export default function QuestionItem({
               ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-400'
               : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
           }`}
-          title={t('translateQuestion')}
+          title={language === 'en' ? 'Get inspection guidance' : t('translateQuestion')}
         >
           {isTranslating ? (
             <Loader2 size={16} className="animate-spin" />
@@ -626,7 +625,7 @@ export default function QuestionItem({
                       </div>
                       <div>
                         <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                          {t('translatedQuestion')} ({currentLanguage?.flag} {currentLanguage?.name})
+                          {language === 'en' ? 'Question Guidance' : t('translatedQuestion')} ({currentLanguage?.flag} {currentLanguage?.name})
                         </p>
                       </div>
                     </div>
