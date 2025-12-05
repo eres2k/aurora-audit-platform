@@ -47,6 +47,15 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
   const margin = 20;
   let yPos = margin;
 
+  // Use stored template sections from audit if template is not available
+  // This ensures PDF export works for all users viewing the audit
+  const effectiveTemplate = template || (audit?.templateSections ? {
+    id: audit.templateId,
+    title: audit.templateTitle,
+    category: audit.templateCategory || 'General',
+    sections: audit.templateSections,
+  } : null);
+
   // Helper function to add new page if needed
   const checkPageBreak = (requiredSpace = 30) => {
     if (yPos + requiredSpace > pageHeight - margin) {
@@ -88,7 +97,7 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
   doc.setTextColor(...COLORS.text);
   doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(template?.title || audit.templateTitle || 'Audit Report', margin, yPos);
+  doc.text(effectiveTemplate?.title || audit.templateTitle || 'Audit Report', margin, yPos);
   yPos += 10;
 
   // Score Badge
@@ -151,13 +160,13 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
   doc.text('TEMPLATE', col1X, yPos + 26);
   doc.setTextColor(...COLORS.text);
   doc.setFontSize(10);
-  doc.text(template?.category || 'General', col1X, yPos + 33);
+  doc.text(effectiveTemplate?.category || audit.templateCategory || 'General', col1X, yPos + 33);
 
   yPos += 45;
 
   // Sections and Questions
-  if (template?.sections) {
-    template.sections.forEach((section, sectionIndex) => {
+  if (effectiveTemplate?.sections) {
+    effectiveTemplate.sections.forEach((section, sectionIndex) => {
       checkPageBreak(40);
 
       // Section Header
@@ -552,7 +561,7 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
 
   // Generate filename and save
   const auditDate = format(new Date(audit.date), 'yyyy-MM-dd');
-  const templateName = (template?.title || audit.templateTitle || 'Audit').replace(/[^a-zA-Z0-9]/g, '_');
+  const templateName = (effectiveTemplate?.title || audit.templateTitle || 'Audit').replace(/[^a-zA-Z0-9]/g, '_');
   const filename = `${templateName}_${audit.location || 'Station'}_${auditDate}.pdf`;
 
   doc.save(filename);

@@ -48,7 +48,17 @@ export default function AuditDetail() {
   const [isExporting, setIsExporting] = useState(false);
 
   const audit = audits.find(a => a.id === id);
-  const template = audit ? templates.find(t => t.id === audit.templateId) : null;
+  const templateFromContext = audit ? templates.find(t => t.id === audit.templateId) : null;
+
+  // Use stored template sections if template lookup fails (for viewing others' audits)
+  // This ensures the full audit report is always visible
+  const template = templateFromContext || (audit?.templateSections ? {
+    id: audit.templateId,
+    title: audit.templateTitle,
+    category: audit.templateCategory || 'General',
+    sections: audit.templateSections,
+  } : null);
+
   const auditActions = actions.filter(a => a.auditId === id);
 
   // Generate Insights Summary

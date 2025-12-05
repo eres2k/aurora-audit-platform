@@ -449,10 +449,13 @@ export function AuditProvider({ children }) {
       const localTemplates = await templatesStore.getItem('templates') || [];
       const localActions = await actionsStore.getItem('actions') || [];
 
-      // Sync audits to server
+      // Sync audits to server - preserve createdBy from original audit
       for (const audit of localAudits) {
         try {
-          await auditsApi.update(audit.id, audit);
+          // Only sync audits created by this user to avoid overwriting others' data
+          if (audit.createdBy === user?.email) {
+            await auditsApi.update(audit.id, audit);
+          }
         } catch (error) {
           console.error('Error syncing audit:', audit.id, error);
         }
@@ -578,12 +581,21 @@ export function AuditProvider({ children }) {
     const template = templates.find(t => t.id === audit.templateId);
     const score = calculateScore(template, finalData.answers);
 
+    // Store template sections in the audit for self-contained display
+    // This ensures the audit can be viewed even without the template
+    const templateSections = template?.sections || null;
+
     const completedAudit = {
       ...audit,
       ...finalData,
+      // Preserve the original createdBy - never overwrite with current user
+      createdBy: audit.createdBy,
       status: 'completed',
       score,
       completedAt: new Date().toISOString(),
+      // Store template sections for self-contained audit reports
+      templateSections,
+      templateCategory: template?.category || 'General',
     };
 
     const updated = audits.map(a =>
