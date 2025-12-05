@@ -48,6 +48,10 @@ export default function QuestionItem({
   const [voiceResult, setVoiceResult] = useState(null);
   const recognitionRef = useRef(null);
 
+  // AI helpers
+  const [isEnhancingNote, setIsEnhancingNote] = useState(false);
+  const [isSuggestingAction, setIsSuggestingAction] = useState(false);
+
   // Initialize speech recognition
   useEffect(() => {
     if (isSpeechRecognitionSupported()) {
@@ -176,6 +180,61 @@ export default function QuestionItem({
     }
     setIsRecording(false);
     setTranscript('');
+  };
+
+  const handleEnhanceNote = async () => {
+    if (!note || !note.trim()) {
+      toast.error('Bitte schreibe zuerst eine Notiz zum Verbessern.');
+      return;
+    }
+
+    setIsEnhancingNote(true);
+    try {
+      const response = await aiApi.enhanceNote(note, question.text);
+      if (response.success && response.data?.enhancedNote) {
+        onNoteChange?.(response.data.enhancedNote);
+        toast.success('Note enhanced with Gemini');
+      } else {
+        throw new Error(response.error || 'Failed to enhance note');
+      }
+    } catch (error) {
+      console.error('Enhance note error:', error);
+      toast.error(error.message || 'Failed to enhance note');
+    } finally {
+      setIsEnhancingNote(false);
+    }
+  };
+
+  const handleSuggestAction = async () => {
+    setIsSuggestingAction(true);
+    try {
+      const response = await aiApi.suggestAction({
+        questionText: question.text,
+        note: note || actionData.notes,
+        status: value,
+        severity: safetyAnalysis?.severity || voiceResult?.suggestedSeverity || null,
+      });
+
+      if (response.success && response.data) {
+        const suggestedPriority = response.data.priority || actionData.priority;
+        const suggestedDescription = response.data.description || actionData.notes;
+
+        setActionData(prev => ({
+          ...prev,
+          priority: suggestedPriority,
+          notes: suggestedDescription,
+        }));
+
+        toast.success('Action suggestion applied');
+      } else {
+        throw new Error(response.error || 'Failed to suggest action');
+      }
+    } catch (error) {
+      console.error('Suggest action error:', error);
+      toast.error(error.message || 'Failed to auto-suggest action');
+    } finally {
+      setIsSuggestingAction(false);
+    }
   };
 
   // Open help chatbot with question context
@@ -431,6 +490,29 @@ export default function QuestionItem({
             )}
           </div>
         </button>
+        {isSpeechRecognitionSupported() && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            disabled={isProcessingVoice}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isRecording) {
+                stopRecording();
+              } else {
+                startRecording();
+              }
+            }}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow-sm flex-shrink-0 ${
+              isRecording
+                ? 'bg-red-500 text-white'
+                : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800/50'
+            }`}
+            title="Voice-to-text assistant"
+          >
+            {isRecording ? <Square size={14} fill="white" /> : <Mic size={16} />}
+          </motion.button>
+        )}
         {/* Help button for ASchG info */}
         <motion.button
           whileHover={{ scale: 1.1 }}
@@ -478,17 +560,17 @@ export default function QuestionItem({
                     rows={2}
                     className="w-full text-sm p-3 pr-12 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 placeholder:text-red-300 dark:placeholder:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
                   />
-                  {/* Microphone button for voice input */}
-                  {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
-                    <motion.button
-                      whileTap={{ scale: 0.9 }}
-                      onClick={startRecording}
-                      className="absolute right-2 top-2 w-8 h-8 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center shadow-sm transition-colors"
-                      title="Voice input"
-                    >
-                      <Mic size={16} />
-                    </motion.button>
-                  )}
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2 justify-end">
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleEnhanceNote}
+                    disabled={isEnhancingNote}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200 hover:bg-purple-200 dark:hover:bg-purple-800/50 text-xs font-semibold"
+                  >
+                    {isEnhancingNote ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    <span>Enhance Note</span>
+                  </motion.button>
                 </div>
               </div>
             )}
@@ -907,9 +989,20 @@ export default function QuestionItem({
 
                   {/* Notes */}
                   <div>
-                    <label className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2 block">
-                      Description
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                        Description
+                      </label>
+                      <motion.button
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleSuggestAction}
+                        disabled={isSuggestingAction}
+                        className="text-[11px] px-2 py-1 rounded-md bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-200 flex items-center gap-1 font-semibold"
+                      >
+                        {isSuggestingAction ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                        Auto-Suggest
+                      </motion.button>
+                    </div>
                     <textarea
                       value={actionData.notes}
                       onChange={(e) => setActionData(prev => ({ ...prev, notes: e.target.value }))}
