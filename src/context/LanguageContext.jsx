@@ -7,11 +7,13 @@ export const SUPPORTED_LANGUAGES = {
   en: { code: 'en', name: 'English', flag: '🇬🇧', speechCode: 'en-US' },
   de: { code: 'de', name: 'Deutsch', flag: '🇩🇪', speechCode: 'de-DE' },
   es: { code: 'es', name: 'Español', flag: '🇪🇸', speechCode: 'es-ES' },
+  fil: { code: 'fil', name: 'Filipino', flag: '🇵🇭', speechCode: 'fil-PH' },
   fr: { code: 'fr', name: 'Français', flag: '🇫🇷', speechCode: 'fr-FR' },
   it: { code: 'it', name: 'Italiano', flag: '🇮🇹', speechCode: 'it-IT' },
   pl: { code: 'pl', name: 'Polski', flag: '🇵🇱', speechCode: 'pl-PL' },
   pt: { code: 'pt', name: 'Português', flag: '🇵🇹', speechCode: 'pt-PT' },
   ro: { code: 'ro', name: 'Română', flag: '🇷🇴', speechCode: 'ro-RO' },
+  sr: { code: 'sr', name: 'Srpski', flag: '🇷🇸', speechCode: 'sr-RS' },
   tr: { code: 'tr', name: 'Türkçe', flag: '🇹🇷', speechCode: 'tr-TR' },
 };
 
@@ -996,6 +998,128 @@ const translations = {
     stepsToCheck: 'Kontrol Adımları',
     translating: 'Çevriliyor...',
     loading: 'Yükleniyor...',
+  },
+
+  // Serbian translations
+  sr: {
+    // Greetings
+    goodMorning: 'Добро јутро',
+    goodAfternoon: 'Добар дан',
+    goodEvening: 'Добро вече',
+    there: 'ту',
+
+    // Dashboard
+    dashboardSubtitle: 'Ево шта се данас дешава са вашим ревизијама.',
+    totalAudits: 'Укупно ревизија',
+    completed: 'Завршено',
+    openActions: 'Отворене акције',
+    avgScore: 'Просечан резултат',
+    recentAudits: 'Недавне ревизије',
+    noAuditsYet: 'Још нема ревизија',
+    createAudit: 'Креирај ревизију',
+    newAudit: 'Нова ревизија',
+
+    // Navigation
+    dashboard: 'Контролна табла',
+    audits: 'Ревизије',
+    templates: 'Шаблони',
+    actions: 'Акције',
+    analytics: 'Аналитика',
+    team: 'Тим',
+    settings: 'Подешавања',
+
+    // Common Actions
+    save: 'Сачувај',
+    cancel: 'Откажи',
+    delete: 'Обриши',
+    edit: 'Измени',
+    close: 'Затвори',
+    search: 'Претрага',
+
+    // Settings
+    language: 'Језик',
+    selectLanguage: 'Изаберите језик',
+
+    // Question Item
+    safe: 'Безбедно',
+    risk: 'Ризик',
+    na: 'Н/П',
+    addPhoto: 'Додај фотографију',
+    analyze: 'Анализирај',
+
+    // Priority
+    priority: 'Приоритет',
+    low: 'Низак',
+    medium: 'Средњи',
+    high: 'Висок',
+
+    // Translation feature
+    translateQuestion: 'Преведи питање',
+    translatedQuestion: 'Преведено питање',
+    stepsToCheck: 'Кораци за проверу',
+    translating: 'Превођење...',
+    loading: 'Учитавање...',
+  },
+
+  // Filipino translations
+  fil: {
+    // Greetings
+    goodMorning: 'Magandang umaga',
+    goodAfternoon: 'Magandang hapon',
+    goodEvening: 'Magandang gabi',
+    there: 'dyan',
+
+    // Dashboard
+    dashboardSubtitle: 'Ito ang nangyayari sa iyong mga audit ngayon.',
+    totalAudits: 'Kabuuang Audit',
+    completed: 'Nakumpleto',
+    openActions: 'Bukas na Aksyon',
+    avgScore: 'Ave. Puntos',
+    recentAudits: 'Kamakailang Audit',
+    noAuditsYet: 'Wala pang audit',
+    createAudit: 'Gumawa ng Audit',
+    newAudit: 'Bagong Audit',
+
+    // Navigation
+    dashboard: 'Dashboard',
+    audits: 'Mga Audit',
+    templates: 'Mga Template',
+    actions: 'Mga Aksyon',
+    analytics: 'Analytics',
+    team: 'Koponan',
+    settings: 'Mga Setting',
+
+    // Common Actions
+    save: 'I-save',
+    cancel: 'Kanselahin',
+    delete: 'Tanggalin',
+    edit: 'I-edit',
+    close: 'Isara',
+    search: 'Maghanap',
+
+    // Settings
+    language: 'Wika',
+    selectLanguage: 'Pumili ng Wika',
+
+    // Question Item
+    safe: 'Ligtas',
+    risk: 'Panganib',
+    na: 'N/A',
+    addPhoto: 'Magdagdag ng Larawan',
+    analyze: 'Suriin',
+
+    // Priority
+    priority: 'Priyoridad',
+    low: 'Mababa',
+    medium: 'Katamtaman',
+    high: 'Mataas',
+
+    // Translation feature
+    translateQuestion: 'Isalin ang tanong',
+    translatedQuestion: 'Naisaling Tanong',
+    stepsToCheck: 'Mga Hakbang sa Pagsuri',
+    translating: 'Nagsasalin...',
+    loading: 'Naglo-load...',
   },
 };
 
