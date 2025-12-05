@@ -4,6 +4,12 @@ import { usersApi } from '../utils/api';
 
 const AuthContext = createContext(null);
 
+// Super admin emails - these users always have admin access regardless of role settings
+const SUPER_ADMIN_EMAILS = [
+  'erwin.esener@gmail.com',
+  // Add more super admin emails here as needed
+];
+
 // Available stations for Amazon Logistics
 const STATIONS = [
   { id: 'DVI1', name: 'DVI1', fullName: 'Distribution Center 1', color: 'bg-blue-500' },
@@ -108,6 +114,26 @@ export const AuthProvider = ({ children }) => {
     return STATIONS.find(s => s.id === stationId);
   };
 
+  // Check if user is admin - centralized logic
+  // Checks: 1) Super admin email list, 2) app_metadata.role, 3) user_metadata.role
+  const checkIsAdmin = (userObj) => {
+    if (!userObj) return false;
+
+    // Check if email is in super admin list (case-insensitive)
+    const email = userObj.email?.toLowerCase();
+    if (email && SUPER_ADMIN_EMAILS.some(adminEmail => adminEmail.toLowerCase() === email)) {
+      return true;
+    }
+
+    // Check Netlify Identity metadata
+    if (userObj.app_metadata?.role === 'Admin') return true;
+    if (userObj.user_metadata?.role === 'Admin') return true;
+
+    return false;
+  };
+
+  const isAdmin = checkIsAdmin(user);
+
   const value = {
     user,
     selectedStation,
@@ -120,6 +146,7 @@ export const AuthProvider = ({ children }) => {
     getStationDetails,
     isAuthenticated: !!user,
     hasSelectedStation: !!selectedStation,
+    isAdmin, // Centralized admin check
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
