@@ -317,6 +317,86 @@ Guidelines:
   }
 };
 
+// Enhance a raw audit note
+const handleEnhanceNote = async (note, questionContext = '') => {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const prompt = `You are cleaning up an audit note to sound professional and concise.
+
+Original note:
+"${note}"
+
+${questionContext ? `Audit question context: "${questionContext}"` : ''}
+
+Return a JSON object:
+{
+  "enhancedNote": "Rewrite the note with clear, concise, professional wording. Keep it factual and actionable."
+}
+
+Keep dates and evidence, highlight location/equipment if present, and avoid adding new facts.`;
+
+  const result = await model.generateContent(prompt);
+  const response = result.response;
+  const text = response.text();
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    throw new Error('Failed to parse AI response as JSON');
+  }
+};
+
+// Suggest an action based on the issue
+const handleSuggestAction = async ({ questionText = '', note = '', status = null, severity = null }) => {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const prompt = `You are creating a corrective action for an audit platform.
+
+Question: "${questionText || 'Unknown question'}"
+Status: ${status || 'not provided'}
+Severity: ${severity || 'not provided'}
+Observed note: "${note || 'No note provided'}"
+
+Return a JSON object:
+{
+  "description": "Clear, concise action for a technician to resolve the issue",
+  "priority": "low" | "medium" | "high"
+}
+
+Guidelines:
+- If status is fail or severity is high/critical, use priority high.
+- Mention specific location/equipment and evidence from the note.
+- Avoid filler words; make the task immediately actionable.`;
+
+  const result = await model.generateContent(prompt);
+  const response = result.response;
+  const text = response.text();
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    throw new Error('Failed to parse AI response as JSON');
+  }
+};
+
 // Austrian ASchG (Arbeitnehmerschutzgesetz) and safety policy knowledge base
 const AUSTRIA_SAFETY_KNOWLEDGE = `
 AUSTRIAN WORKPLACE SAFETY REGULATIONS (ASchG - ArbeitnehmerInnenschutzgesetz)
@@ -607,7 +687,22 @@ export const handler = async (event, context) => {
 
   try {
     const body = JSON.parse(event.body);
-    const { action, audit, template, imageBase64, question, prompt, category, transcript, questionContext, conversationHistory } = body;
+    const {
+      action,
+      audit,
+      template,
+      imageBase64,
+      question,
+      prompt,
+      category,
+      transcript,
+      questionContext,
+      conversationHistory,
+      note,
+      questionText,
+      status,
+      severity,
+    } = body;
 
     if (!action) {
       return jsonResponse({ error: 'Action is required' }, 400);
@@ -649,6 +744,22 @@ export const handler = async (event, context) => {
           return jsonResponse({ error: 'Transcript is required for voice processing' }, 400);
         }
         result = await handleProcessVoiceNote(transcript, questionContext);
+        break;
+
+      case 'enhance_note':
+        if (!note) {
+          return jsonResponse({ error: 'Note text is required for enhancement' }, 400);
+        }
+        result = await handleEnhanceNote(note, questionContext || questionText || question);
+        break;
+
+      case 'suggest_action':
+        result = await handleSuggestAction({
+          questionText: questionText || question,
+          note,
+          status,
+          severity,
+        });
         break;
 
       case 'policy_chat':
