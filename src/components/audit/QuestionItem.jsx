@@ -947,18 +947,6 @@ export default function QuestionItem({
 
             {/* Action buttons row */}
             <div className="mt-4 flex flex-wrap gap-2">
-              {/* Voice Input button - prominent mic icon */}
-              {isSpeechRecognitionSupported() && !isRecording && !isProcessingVoice && (
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={startRecording}
-                  className="flex-1 min-w-[120px] py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 transition-all flex items-center justify-center gap-2 text-sm font-medium text-white shadow-md shadow-indigo-500/30"
-                >
-                  <Mic size={18} />
-                  <span>Voice Note</span>
-                </motion.button>
-              )}
-
               {/* Add Photo button */}
               {onAddPhoto && question.type !== 'photo' && (
                 <motion.button
