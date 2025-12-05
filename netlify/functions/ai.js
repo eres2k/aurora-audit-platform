@@ -514,6 +514,109 @@ Guidelines:
   }
 };
 
+// Enhance a note to make it more professional
+const handleEnhanceNote = async (noteText, questionContext = '') => {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const prompt = `You are a professional audit documentation assistant. Your task is to enhance and improve the following audit note to make it more professional, clear, and suitable for official audit reports.
+
+Original note from the auditor:
+"${noteText}"
+
+${questionContext ? `Context - This note is related to the audit question: "${questionContext}"` : ''}
+
+Enhance this note by:
+1. Using professional and formal language
+2. Structuring the information clearly
+3. Adding specific details where implied
+4. Removing informal language, typos, and filler words
+5. Making it actionable and clear
+6. Keeping it concise but complete
+
+Return a JSON object:
+{
+  "enhancedNote": "The professionally rewritten version of the note",
+  "improvements": ["List of specific improvements made"],
+  "suggestedFollowUp": "Optional suggested follow-up action if applicable"
+}
+
+Important:
+- Preserve all factual information from the original note
+- Do not add information that was not implied
+- Keep the enhanced note concise (max 2-3 sentences unless more detail is needed)
+- Use proper grammar and punctuation`;
+
+  const result = await model.generateContent(prompt);
+  const response = result.response;
+  const text = response.text();
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    throw new Error('Failed to parse AI response as JSON');
+  }
+};
+
+// Auto-suggest action description and priority based on the issue
+const handleAutoSuggestAction = async (questionText, noteText = '', analysisContext = null) => {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  });
+
+  const prompt = `You are an experienced safety and compliance manager creating corrective action items for workplace issues.
+
+Audit Question: "${questionText}"
+${noteText ? `Auditor's Notes: "${noteText}"` : ''}
+${analysisContext ? `Safety Analysis: ${JSON.stringify(analysisContext)}` : ''}
+
+Based on this failed audit item, generate a comprehensive action item. Return a JSON object:
+{
+  "description": "A clear, specific, and actionable description of what needs to be done to resolve this issue. Include specific steps if applicable. Should be 1-3 sentences.",
+  "priority": "low" | "medium" | "high",
+  "suggestedOwner": "OPS" | "ACES" | "RME" | "WHS" | null,
+  "reasoning": "Brief explanation of why this priority was assigned",
+  "estimatedEffort": "Quick fix (< 1 hour)" | "Half day" | "Full day" | "Multiple days",
+  "safetyImpact": "low" | "medium" | "high"
+}
+
+Priority Guidelines:
+- HIGH: Immediate safety risk, regulatory violation, could cause injury, or affects critical operations
+- MEDIUM: Should be addressed soon, quality issue, minor safety concern, or process improvement needed
+- LOW: Cosmetic issues, minor improvements, or nice-to-have enhancements
+
+Owner Guidelines:
+- OPS: Operational issues, process changes, workflow improvements
+- ACES: Equipment issues, facilities maintenance, building systems
+- RME: Technical equipment, machinery, specialized repairs
+- WHS: Safety compliance, PPE, safety equipment, regulatory matters`;
+
+  const result = await model.generateContent(prompt);
+  const response = result.response;
+  const text = response.text();
+
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    throw new Error('Failed to parse AI response as JSON');
+  }
+};
+
 // Analyze image for safety compliance
 const handleAnalyzeImage = async (imageBase64, question) => {
   const model = genAI.getGenerativeModel({
@@ -607,7 +710,7 @@ export const handler = async (event, context) => {
 
   try {
     const body = JSON.parse(event.body);
-    const { action, audit, template, imageBase64, question, prompt, category, transcript, questionContext, conversationHistory } = body;
+    const { action, audit, template, imageBase64, question, prompt, category, transcript, questionContext, conversationHistory, noteText, analysisContext } = body;
 
     if (!action) {
       return jsonResponse({ error: 'Action is required' }, 400);
@@ -663,6 +766,20 @@ export const handler = async (event, context) => {
           return jsonResponse({ error: 'Audit data is required for PDF insights' }, 400);
         }
         result = await handleGeneratePDFInsights(audit, template);
+        break;
+
+      case 'enhance_note':
+        if (!noteText) {
+          return jsonResponse({ error: 'Note text is required for enhancement' }, 400);
+        }
+        result = await handleEnhanceNote(noteText, questionContext);
+        break;
+
+      case 'auto_suggest_action':
+        if (!question) {
+          return jsonResponse({ error: 'Question text is required for action suggestion' }, 400);
+        }
+        result = await handleAutoSuggestAction(question, noteText, analysisContext);
         break;
 
       default:
