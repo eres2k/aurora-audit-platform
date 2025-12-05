@@ -1,0 +1,161 @@
+{
+  "common": {
+    "appName": "AuditHub",
+    "tagline": "Безбедносне ревизије",
+    "loading": "Учитавање...",
+    "save": "Сачувај",
+    "cancel": "Откажи",
+    "delete": "Обриши",
+    "edit": "Измени",
+    "close": "Затвори",
+    "change": "Промени",
+    "export": "Извези",
+    "clear": "Очисти",
+    "manage": "Управљај",
+    "signOut": "Одјава",
+    "noStation": "Без станице",
+    "user": "Корисник"
+  },
+  "nav": {
+    "dashboard": "Контролна табла",
+    "audits": "Ревизије",
+    "templates": "Шаблони",
+    "actions": "Акције",
+    "analytics": "Аналитика",
+    "team": "Тим",
+    "settings": "Подешавања"
+  },
+  "settings": {
+    "title": "Подешавања",
+    "subtitle": "Управљајте својим налогом и подешавањима апликације",
+    "profile": {
+      "currentStation": "Тренутна станица",
+      "noStationSelected": "Станица није изабрана"
+    },
+    "appearance": {
+      "title": "Изглед",
+      "darkMode": "Тамни режим",
+      "darkEnabled": "Тамна тема је активирана",
+      "lightEnabled": "Светла тема је активирана",
+      "language": "Језик",
+      "languageDescription": "Изаберите жељени језик",
+      "english": "Енглески (English)",
+      "german": "Немачки (Deutsch)",
+      "serbian": "Српски"
+    },
+    "notifications": {
+      "title": "Обавештења",
+      "push": "Push обавештења",
+      "pushDescription": "Примајте обавештења за нове акције"
+    },
+    "dataManagement": {
+      "title": "Управљање подацима",
+      "export": "Извези податке",
+      "exportDescription": "Преузмите све своје ревизије и шаблоне",
+      "storage": "Искоришћен простор",
+      "storageDescription": "{{audits}} ревизија, {{templates}} шаблона",
+      "clearData": "Обриши све податке",
+      "clearDataDescription": "Трајно обришите све локалне податке",
+      "confirmClear": "Ово ће трајно обрисати све ваше ревизије, шаблоне и подешавања. Ова акција се не може поништити."
+    },
+    "account": {
+      "title": "Налог",
+      "security": "Безбедност",
+      "securityDescription": "Управљајте безбедношћу налога"
+    },
+    "modals": {
+      "selectStation": "Изаберите станицу",
+      "clearAllData": "Обриши све податке",
+      "deleteAll": "Обриши све"
+    }
+  },
+  "policyAssistant": {
+    "title": "Асистент за прописе",
+    "subtitle": "Аустријски ASchG и OSHA смернице",
+    "greeting": "Здраво! Ја сам AuditHub асистент за прописе. Могу вам помоћи са питањима о аустријским прописима о безбедности на раду (ASchG), OSHA стандардима и општој усклађености безбедности. Шта желите да знате?",
+    "placeholder": "Питајте о безбедносним прописима...",
+    "searching": "Претрага прописа...",
+    "errorMessage": "Извињавам се, али дошло је до грешке приликом обраде вашег питања. Молимо покушајте поново или преформулишите питање.",
+    "sources": "Извори",
+    "relatedTopics": "Сродне теме:",
+    "commonQuestions": "Честа питања:",
+    "confidence": {
+      "high": "висока поузданост",
+      "medium": "средња поузданост",
+      "low": "ниска поузданост"
+    },
+    "quickQuestions": {
+      "walkwayWidth": "Која је минимална ширина пролаза?",
+      "fireExtinguisher": "Правила за постављање апарата за гашење?",
+      "liftingWeight": "Максимална тежина за подизање?",
+      "emergencyExit": "Захтеви за излазе у нужди?"
+    },
+    "defaultTopics": {
+      "walkway": "Захтеви за слободан пролаз",
+      "fireExtinguisher": "Постављање апарата за гашење",
+      "ppe": "Захтеви за личну заштитну опрему"
+    },
+    "viewPolicy": "Погледај пропис",
+    "policyLinks": {
+      "aschg": "ASchG пун текст",
+      "aschgUrl": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910",
+      "osha": "OSHA стандарди",
+      "oshaUrl": "https://www.osha.gov/laws-regs/regulations/standardnumber"
+    }
+  },
+  "dashboard": {
+    "title": "Контролна табла",
+    "welcome": "Добродошли назад",
+    "overview": "Ево прегледа ваших безбедносних ревизија"
+  },
+  "audits": {
+    "title": "Ревизије",
+    "newAudit": "Нова ревизија",
+    "noAudits": "Нема пронађених ревизија",
+    "status": {
+      "completed": "Завршено",
+      "inProgress": "У току",
+      "draft": "Нацрт"
+    }
+  },
+  "templates": {
+    "title": "Шаблони",
+    "newTemplate": "Нови шаблон",
+    "noTemplates": "Нема пронађених шаблона"
+  },
+  "actions": {
+    "title": "Акције",
+    "newAction": "Нова акција",
+    "noActions": "Нема пронађених акција",
+    "status": {
+      "open": "Отворено",
+      "inProgress": "У току",
+      "completed": "Завршено",
+      "overdue": "Истекло"
+    }
+  },
+  "analytics": {
+    "title": "Аналитика",
+    "subtitle": "Пратите своје безбедносне перформансе"
+  },
+  "team": {
+    "title": "Тим",
+    "subtitle": "Управљајте члановима тима"
+  },
+  "login": {
+    "title": "Пријава",
+    "subtitle": "Добродошли назад у AuditHub",
+    "email": "Е-пошта",
+    "password": "Лозинка",
+    "signIn": "Пријави се",
+    "signUp": "Региструј се",
+    "forgotPassword": "Заборавили сте лозинку?"
+  },
+  "toast": {
+    "dataExported": "Подаци успешно извезени",
+    "dataCleared": "Сви подаци обрисани",
+    "stationChanged": "Пребачено на {{station}}",
+    "languageChanged": "Језик промењен на {{language}}",
+    "errorOccurred": "Дошло је до грешке"
+  }
+}

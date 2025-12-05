@@ -13,10 +13,13 @@ import {
   LogOut,
   MapPin,
   ChevronRight,
+  Check,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useAudits } from '../context/AuditContext';
+import { useLanguage, languages } from '../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { Card, Button, Modal } from '../components/ui';
 import toast from 'react-hot-toast';
 
@@ -24,8 +27,11 @@ export default function Settings() {
   const { user, selectedStation, stations, selectStation, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const { audits, templates } = useAudits();
+  const { currentLanguage, changeLanguage, getCurrentLanguageInfo } = useLanguage();
+  const { t } = useTranslation();
   const [showStationModal, setShowStationModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   const handleExportData = () => {
     const data = {
@@ -40,14 +46,21 @@ export default function Settings() {
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
-    toast.success('Data exported successfully');
+    toast.success(t('toast.dataExported'));
   };
 
   const handleClearData = () => {
     localStorage.clear();
-    toast.success('All data cleared');
+    toast.success(t('toast.dataCleared'));
     setShowDeleteModal(false);
     window.location.reload();
+  };
+
+  const handleLanguageChange = (langCode) => {
+    changeLanguage(langCode);
+    const langInfo = languages.find(l => l.code === langCode);
+    toast.success(t('toast.languageChanged', { language: langInfo?.nativeName }));
+    setShowLanguageModal(false);
   };
 
   const SettingItem = ({ icon: Icon, title, description, action, danger = false }) => (
@@ -72,10 +85,10 @@ export default function Settings() {
       {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-display font-bold text-slate-900 dark:text-white">
-          Settings
+          {t('settings.title')}
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Manage your account and app preferences
+          {t('settings.subtitle')}
         </p>
       </div>
 
@@ -90,7 +103,7 @@ export default function Settings() {
             </div>
             <div>
               <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-                {user?.user_metadata?.full_name || 'User'}
+                {user?.user_metadata?.full_name || t('common.user')}
               </h2>
               <p className="text-slate-500 dark:text-slate-400">{user?.email}</p>
             </div>
@@ -99,11 +112,11 @@ export default function Settings() {
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
           <SettingItem
             icon={MapPin}
-            title="Current Station"
-            description={selectedStation || 'No station selected'}
+            title={t('settings.profile.currentStation')}
+            description={selectedStation || t('settings.profile.noStationSelected')}
             action={
               <Button variant="ghost" size="sm" onClick={() => setShowStationModal(true)}>
-                Change <ChevronRight size={16} />
+                {t('common.change')} <ChevronRight size={16} />
               </Button>
             }
           />
@@ -113,13 +126,13 @@ export default function Settings() {
       {/* Appearance */}
       <Card>
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white px-4 pt-4 pb-2">
-          Appearance
+          {t('settings.appearance.title')}
         </h2>
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
           <SettingItem
             icon={isDark ? Moon : Sun}
-            title="Dark Mode"
-            description={isDark ? 'Dark theme is enabled' : 'Light theme is enabled'}
+            title={t('settings.appearance.darkMode')}
+            description={isDark ? t('settings.appearance.darkEnabled') : t('settings.appearance.lightEnabled')}
             action={
               <button
                 onClick={toggleTheme}
@@ -134,11 +147,11 @@ export default function Settings() {
           />
           <SettingItem
             icon={Globe}
-            title="Language"
-            description="English (US)"
+            title={t('settings.appearance.language')}
+            description={`${getCurrentLanguageInfo().flag} ${getCurrentLanguageInfo().nativeName}`}
             action={
-              <Button variant="ghost" size="sm">
-                Change <ChevronRight size={16} />
+              <Button variant="ghost" size="sm" onClick={() => setShowLanguageModal(true)}>
+                {t('common.change')} <ChevronRight size={16} />
               </Button>
             }
           />
@@ -148,13 +161,13 @@ export default function Settings() {
       {/* Notifications */}
       <Card>
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white px-4 pt-4 pb-2">
-          Notifications
+          {t('settings.notifications.title')}
         </h2>
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
           <SettingItem
             icon={Bell}
-            title="Push Notifications"
-            description="Receive alerts for new actions"
+            title={t('settings.notifications.push')}
+            description={t('settings.notifications.pushDescription')}
             action={
               <button className="w-14 h-8 rounded-full p-1 transition-colors bg-amazon-orange">
                 <motion.div
@@ -170,33 +183,33 @@ export default function Settings() {
       {/* Data Management */}
       <Card>
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white px-4 pt-4 pb-2">
-          Data Management
+          {t('settings.dataManagement.title')}
         </h2>
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
           <SettingItem
             icon={Download}
-            title="Export Data"
-            description="Download all your audits and templates"
+            title={t('settings.dataManagement.export')}
+            description={t('settings.dataManagement.exportDescription')}
             action={
               <Button variant="secondary" size="sm" onClick={handleExportData}>
-                Export
+                {t('common.export')}
               </Button>
             }
           />
           <SettingItem
             icon={Database}
-            title="Storage Used"
-            description={`${audits.length} audits, ${templates.length} templates`}
+            title={t('settings.dataManagement.storage')}
+            description={t('settings.dataManagement.storageDescription', { audits: audits.length, templates: templates.length })}
             action={null}
           />
           <SettingItem
             icon={Trash2}
-            title="Clear All Data"
-            description="Permanently delete all local data"
+            title={t('settings.dataManagement.clearData')}
+            description={t('settings.dataManagement.clearDataDescription')}
             danger
             action={
               <Button variant="danger" size="sm" onClick={() => setShowDeleteModal(true)}>
-                Clear
+                {t('common.clear')}
               </Button>
             }
           />
@@ -206,27 +219,27 @@ export default function Settings() {
       {/* Account */}
       <Card>
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white px-4 pt-4 pb-2">
-          Account
+          {t('settings.account.title')}
         </h2>
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
           <SettingItem
             icon={Shield}
-            title="Security"
-            description="Manage your account security"
+            title={t('settings.account.security')}
+            description={t('settings.account.securityDescription')}
             action={
               <Button variant="ghost" size="sm">
-                Manage <ChevronRight size={16} />
+                {t('common.manage')} <ChevronRight size={16} />
               </Button>
             }
           />
           <SettingItem
             icon={LogOut}
-            title="Sign Out"
-            description="Sign out of your account"
+            title={t('common.signOut')}
+            description={t('settings.account.securityDescription')}
             danger
             action={
               <Button variant="danger" size="sm" onClick={logout}>
-                Sign Out
+                {t('common.signOut')}
               </Button>
             }
           />
@@ -243,7 +256,7 @@ export default function Settings() {
       <Modal
         isOpen={showStationModal}
         onClose={() => setShowStationModal(false)}
-        title="Select Station"
+        title={t('settings.modals.selectStation')}
         size="md"
       >
         <div className="grid grid-cols-2 gap-3">
@@ -253,7 +266,7 @@ export default function Settings() {
               onClick={() => {
                 selectStation(station.id);
                 setShowStationModal(false);
-                toast.success(`Switched to ${station.id}`);
+                toast.success(t('toast.stationChanged', { station: station.id }));
               }}
               className={`p-4 rounded-xl text-left transition-all ${
                 selectedStation === station.id
@@ -268,17 +281,52 @@ export default function Settings() {
         </div>
       </Modal>
 
+      {/* Language Selection Modal */}
+      <Modal
+        isOpen={showLanguageModal}
+        onClose={() => setShowLanguageModal(false)}
+        title={t('settings.appearance.language')}
+        size="sm"
+      >
+        <div className="space-y-2">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+            {t('settings.appearance.languageDescription')}
+          </p>
+          {languages.map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => handleLanguageChange(lang.code)}
+              className={`w-full p-4 rounded-xl text-left transition-all flex items-center justify-between ${
+                currentLanguage === lang.code
+                  ? 'bg-amazon-orange text-white'
+                  : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{lang.flag}</span>
+                <div>
+                  <div className="font-semibold">{lang.nativeName}</div>
+                  <div className="text-sm opacity-80">{lang.name}</div>
+                </div>
+              </div>
+              {currentLanguage === lang.code && (
+                <Check size={20} className="flex-shrink-0" />
+              )}
+            </button>
+          ))}
+        </div>
+      </Modal>
+
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
-        title="Clear All Data"
+        title={t('settings.modals.clearAllData')}
         size="sm"
       >
         <div className="space-y-4">
           <p className="text-slate-600 dark:text-slate-400">
-            This will permanently delete all your audits, templates, and settings.
-            This action cannot be undone.
+            {t('settings.dataManagement.confirmClear')}
           </p>
           <div className="flex gap-3">
             <Button
@@ -286,14 +334,14 @@ export default function Settings() {
               onClick={() => setShowDeleteModal(false)}
               className="flex-1"
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               variant="danger"
               onClick={handleClearData}
               className="flex-1"
             >
-              Delete All
+              {t('settings.modals.deleteAll')}
             </Button>
           </div>
         </div>
