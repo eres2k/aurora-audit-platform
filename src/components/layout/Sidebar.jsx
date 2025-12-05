@@ -13,10 +13,14 @@ import {
   X,
   Zap,
   MapPin,
+  UserCog,
+  Shield,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 
+// Regular navigation items
 const navItems = [
   { icon: LayoutDashboard, labelKey: 'dashboard', path: '/dashboard' },
   { icon: ClipboardList, labelKey: 'audits', path: '/audits' },
@@ -27,10 +31,20 @@ const navItems = [
   { icon: Settings, labelKey: 'settings', path: '/settings' },
 ];
 
+// Admin-only navigation items
+const adminNavItems = [
+  { icon: UserCog, labelKey: 'userManagement', path: '/users' },
+  { icon: Shield, labelKey: 'permissions', path: '/permissions' },
+];
+
 export default function Sidebar({ isOpen, onClose }) {
   const { logout, user, selectedStation } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+
+  // Check if user is admin
+  const isAdmin = user?.app_metadata?.role === 'Admin' ||
+                  user?.user_metadata?.role === 'Admin';
 
   const handleLogout = () => {
     logout();
@@ -67,6 +81,31 @@ export default function Sidebar({ isOpen, onClose }) {
             <span>{t(item.labelKey)}</span>
           </NavLink>
         ))}
+
+        {/* Admin Section */}
+        {isAdmin && (
+          <>
+            <div className="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase">
+                <Crown size={14} />
+                <span>{t('administration')}</span>
+              </div>
+            </div>
+            {adminNavItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `nav-item ${isActive ? 'nav-item-active bg-amber-50 dark:bg-amber-900/20' : 'nav-item-inactive'}`
+                }
+              >
+                <item.icon size={20} />
+                <span>{t(item.labelKey)}</span>
+              </NavLink>
+            ))}
+          </>
+        )}
       </nav>
 
       {/* User Section */}

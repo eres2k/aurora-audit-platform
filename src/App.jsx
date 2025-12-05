@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import { motion } from 'framer-motion';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -17,18 +18,58 @@ import Actions from './pages/Actions';
 import Analytics from './pages/Analytics';
 import Team from './pages/Team';
 import Settings from './pages/Settings';
-import { Loader2 } from 'lucide-react';
+import UserManagement from './pages/UserManagement';
+import Permissions from './pages/Permissions';
+import { Loader2, Zap } from 'lucide-react';
+
+// Full-page loading component with brand animation
+const FullPageLoader = () => (
+  <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col items-center gap-4"
+    >
+      <motion.div
+        animate={{
+          rotate: [0, 10, -10, 0],
+          scale: [1, 1.05, 1]
+        }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+        className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amazon-orange to-amazon-orange-dark flex items-center justify-center shadow-lg shadow-amazon-orange/30"
+      >
+        <Zap size={32} className="text-white" />
+      </motion.div>
+      <div className="text-center">
+        <h2 className="text-lg font-display font-bold text-slate-900 dark:text-white">
+          AuditHub
+        </h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading...</p>
+      </div>
+      <motion.div
+        className="w-32 h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden"
+      >
+        <motion.div
+          animate={{ x: ['-100%', '100%'] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          className="w-full h-full bg-gradient-to-r from-amazon-orange to-amazon-teal rounded-full"
+        />
+      </motion.div>
+    </motion.div>
+  </div>
+);
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
   const { isAuthenticated, hasSelectedStation, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-amazon-orange animate-spin" />
-      </div>
-    );
+    return <FullPageLoader />;
   }
 
   if (!isAuthenticated) {
@@ -47,11 +88,7 @@ function AppRoutes() {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-amazon-orange animate-spin" />
-      </div>
-    );
+    return <FullPageLoader />;
   }
 
   return (
@@ -76,6 +113,8 @@ function AppRoutes() {
         <Route path="analytics" element={<Analytics />} />
         <Route path="team" element={<Team />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="users" element={<UserManagement />} />
+        <Route path="permissions" element={<Permissions />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

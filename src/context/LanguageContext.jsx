@@ -246,6 +246,16 @@ const translations = {
     info: 'Info',
     tapToCapture: 'Tap to capture photo',
     enterYourNotes: 'Enter your notes...',
+
+    // Admin/User Management
+    administration: 'Administration',
+    userManagement: 'User Management',
+    permissions: 'Permissions',
+    manageUsers: 'Manage users and their roles',
+    managePermissions: 'Configure role-based access control',
+    accessDenied: 'Access Denied',
+    noPermission: 'You don\'t have permission to access this feature',
+    contactAdmin: 'Please contact an administrator if you need access',
   },
 
   de: {
@@ -475,6 +485,16 @@ const translations = {
     info: 'Info',
     tapToCapture: 'Tippen, um ein Foto aufzunehmen',
     enterYourNotes: 'Geben Sie Ihre Notizen ein...',
+
+    // Admin/User Management
+    administration: 'Verwaltung',
+    userManagement: 'Benutzerverwaltung',
+    permissions: 'Berechtigungen',
+    manageUsers: 'Benutzer und ihre Rollen verwalten',
+    managePermissions: 'Rollenbasierte Zugriffskontrolle konfigurieren',
+    accessDenied: 'Zugriff verweigert',
+    noPermission: 'Sie haben keine Berechtigung für diese Funktion',
+    contactAdmin: 'Bitte kontaktieren Sie einen Administrator',
   },
 
   es: {
