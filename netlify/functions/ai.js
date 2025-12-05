@@ -538,7 +538,7 @@ Enhance this note by:
 5. Making it actionable and clear
 6. Keeping it concise but complete
 
-Return a JSON object:
+Return a JSON object with this EXACT structure (not an array):
 {
   "enhancedNote": "The professionally rewritten version of the note",
   "improvements": ["List of specific improvements made"],
@@ -546,6 +546,7 @@ Return a JSON object:
 }
 
 Important:
+- Return ONLY a single JSON object, NOT an array
 - Preserve all factual information from the original note
 - Do not add information that was not implied
 - Keep the enhanced note concise (max 2-3 sentences unless more detail is needed)
@@ -556,11 +557,49 @@ Important:
   const text = response.text();
 
   try {
-    return JSON.parse(text);
+    let parsed = JSON.parse(text);
+
+    // Handle case where AI returns an array instead of object
+    if (Array.isArray(parsed)) {
+      // Try to find the object with enhancedNote, or merge array items
+      const noteObj = parsed.find(item => item && item.enhancedNote);
+      if (noteObj) {
+        parsed = noteObj;
+      } else if (parsed.length > 0 && typeof parsed[0] === 'object') {
+        // Merge all array items into a single object
+        parsed = parsed.reduce((acc, item) => ({ ...acc, ...item }), {});
+      }
+    }
+
+    // Ensure enhancedNote exists
+    if (!parsed.enhancedNote && typeof parsed === 'object') {
+      // Look for alternative keys that might contain the enhanced note
+      const possibleKeys = ['enhanced_note', 'note', 'text', 'result', 'output'];
+      for (const key of possibleKeys) {
+        if (parsed[key] && typeof parsed[key] === 'string') {
+          parsed.enhancedNote = parsed[key];
+          break;
+        }
+      }
+    }
+
+    return parsed;
   } catch (e) {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      let parsed = JSON.parse(jsonMatch[0]);
+
+      // Apply same array handling for extracted JSON
+      if (Array.isArray(parsed)) {
+        const noteObj = parsed.find(item => item && item.enhancedNote);
+        if (noteObj) {
+          parsed = noteObj;
+        } else if (parsed.length > 0 && typeof parsed[0] === 'object') {
+          parsed = parsed.reduce((acc, item) => ({ ...acc, ...item }), {});
+        }
+      }
+
+      return parsed;
     }
     throw new Error('Failed to parse AI response as JSON');
   }
