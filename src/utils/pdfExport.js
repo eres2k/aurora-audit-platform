@@ -12,14 +12,6 @@ const COLORS = {
   border: [226, 232, 240], // Slate 200
 };
 
-const getGrade = (score) => {
-  if (score >= 90) return 'A';
-  if (score >= 80) return 'B';
-  if (score >= 70) return 'C';
-  if (score >= 60) return 'D';
-  return 'F';
-};
-
 const getScoreColor = (score) => {
   if (score >= 80) return COLORS.success;
   if (score >= 60) return COLORS.warning;
@@ -100,35 +92,39 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
   doc.text(effectiveTemplate?.title || audit.templateTitle || 'Audit Report', margin, yPos);
   yPos += 10;
 
-  // Score Badge
+  // Score Badge - circular design with color coding
   if (audit.score !== null && audit.score !== undefined) {
     const scoreColor = getScoreColor(audit.score);
-    const grade = getGrade(audit.score);
+    const circleRadius = 18;
+    const circleX = margin + circleRadius + 5;
+    const circleY = yPos + circleRadius + 2;
 
-    // Score box
+    // Draw colored circle background
     doc.setFillColor(...scoreColor);
-    doc.roundedRect(margin, yPos, 45, 25, 3, 3, 'F');
+    doc.circle(circleX, circleY, circleRadius, 'F');
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
+    // Inner white circle for ring effect
+    doc.setFillColor(255, 255, 255);
+    doc.circle(circleX, circleY, circleRadius - 4, 'F');
+
+    // Score percentage in the center
+    doc.setTextColor(...scoreColor);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text(grade, margin + 12, yPos + 17);
+    doc.text(`${audit.score}%`, circleX, circleY + 2, { align: 'center' });
 
-    doc.setFontSize(10);
-    doc.text(`${audit.score}%`, margin + 25, yPos + 17);
-
-    // Status
+    // Status and completion date
     doc.setTextColor(...COLORS.success);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('COMPLETED', margin + 55, yPos + 12);
+    doc.text('COMPLETED', margin + 55, yPos + 15);
 
     doc.setTextColor(...COLORS.textLight);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.text(format(new Date(audit.completedAt || audit.date), 'MMM d, yyyy h:mm a'), margin + 55, yPos + 20);
+    doc.text(format(new Date(audit.completedAt || audit.date), 'MMM d, yyyy h:mm a'), margin + 55, yPos + 24);
 
-    yPos += 35;
+    yPos += 45;
   }
 
   // Audit Details Box
@@ -200,12 +196,12 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
 
       autoTable(doc, {
         startY: yPos,
-        head: [['#', 'Question', 'Critical', 'Result', 'Comments / Observations', 'Evidence']],
+        head: [['#', 'Question', 'Crit.', 'Result', 'Comments / Observations', 'Evidence']],
         body: tableData,
         margin: { left: margin, right: margin },
         styles: {
-          fontSize: 9,
-          cellPadding: 4,
+          fontSize: 8,
+          cellPadding: 3,
           textColor: COLORS.text,
           lineColor: COLORS.border,
           lineWidth: 0.1,
@@ -215,15 +211,15 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
           fillColor: [241, 245, 249], // Slate 100
           textColor: COLORS.textLight,
           fontStyle: 'bold',
-          fontSize: 8,
+          fontSize: 7,
         },
         columnStyles: {
-          0: { cellWidth: 8, halign: 'center' },
-          1: { cellWidth: 50, overflow: 'linebreak' },
-          2: { cellWidth: 12, halign: 'center' },
-          3: { cellWidth: 14, halign: 'center' },
-          4: { cellWidth: 60, overflow: 'linebreak' }, // Much wider comments field
-          5: { cellWidth: 18, halign: 'center' },
+          0: { cellWidth: 7, halign: 'center' },
+          1: { cellWidth: 55, overflow: 'linebreak' },
+          2: { cellWidth: 10, halign: 'center' },
+          3: { cellWidth: 12, halign: 'center' },
+          4: { cellWidth: 65, overflow: 'linebreak' },
+          5: { cellWidth: 17, halign: 'center' },
         },
         didParseCell: function (data) {
           if (data.section === 'body' && data.column.index === 3) {
@@ -326,11 +322,12 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
       body: actionTableData,
       margin: { left: margin, right: margin },
       styles: {
-        fontSize: 9,
-        cellPadding: 3,
+        fontSize: 8,
+        cellPadding: 4,
         textColor: COLORS.text,
         lineColor: COLORS.border,
         lineWidth: 0.1,
+        overflow: 'linebreak',
       },
       headStyles: {
         fillColor: [254, 226, 226], // Red 100
@@ -339,12 +336,12 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
         fontSize: 8,
       },
       columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 'auto' },
-        2: { cellWidth: 18, halign: 'center' },
-        3: { cellWidth: 22, halign: 'center' },
-        4: { cellWidth: 35 },
-        5: { cellWidth: 25, halign: 'center' },
+        0: { cellWidth: 8, halign: 'center' },
+        1: { cellWidth: 55, overflow: 'linebreak' },
+        2: { cellWidth: 16, halign: 'center' },
+        3: { cellWidth: 20, halign: 'center' },
+        4: { cellWidth: 45, overflow: 'linebreak' },
+        5: { cellWidth: 22, halign: 'center' },
       },
       didParseCell: function (data) {
         if (data.section === 'body' && data.column.index === 2) {
@@ -380,20 +377,24 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
   if (audit.globalNotes) {
     checkPageBreak(50);
 
+    // Calculate actual height needed
+    doc.setFontSize(9);
+    const splitNotes = doc.splitTextToSize(audit.globalNotes, pageWidth - 2 * margin - 16);
+    const notesHeight = Math.max(35, 22 + splitNotes.length * 5);
+
     doc.setFillColor(248, 250, 252);
-    const notesHeight = Math.max(40, 30 + audit.globalNotes.length / 3);
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, notesHeight, 3, 3, 'F');
+    doc.setDrawColor(...COLORS.border);
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, notesHeight, 3, 3, 'FD');
 
     doc.setTextColor(...COLORS.textLight);
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text('ADDITIONAL NOTES', margin + 8, yPos + 12);
+    doc.text('ADDITIONAL NOTES', margin + 8, yPos + 10);
 
     doc.setTextColor(...COLORS.text);
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    const splitNotes = doc.splitTextToSize(audit.globalNotes, pageWidth - 2 * margin - 16);
-    doc.text(splitNotes, margin + 8, yPos + 22);
+    doc.text(splitNotes, margin + 8, yPos + 18);
 
     yPos += notesHeight + 10;
   }
@@ -514,29 +515,34 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
 
   // Signature
   if (audit.signature) {
-    checkPageBreak(50);
+    checkPageBreak(60);
 
     doc.setTextColor(...COLORS.textLight);
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('AUDITOR SIGNATURE', margin, yPos + 5);
 
     try {
-      doc.addImage(audit.signature, 'PNG', margin, yPos + 10, 60, 30);
+      doc.addImage(audit.signature, 'PNG', margin, yPos + 12, 70, 35);
     } catch (e) {
       doc.setTextColor(...COLORS.text);
       doc.setFontSize(9);
-      doc.text('[Signature on file]', margin, yPos + 25);
+      doc.text('[Signature on file]', margin, yPos + 30);
     }
 
     doc.setDrawColor(...COLORS.border);
-    doc.line(margin, yPos + 42, margin + 70, yPos + 42);
+    doc.line(margin, yPos + 50, margin + 80, yPos + 50);
+
+    // Use signedBy field if available, fallback to createdBy for older audits
+    const signerName = audit.signedBy || audit.createdBy || 'Auditor';
+    doc.setTextColor(...COLORS.text);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(signerName, margin, yPos + 58);
 
     doc.setTextColor(...COLORS.textLight);
     doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(audit.createdBy || 'Auditor', margin, yPos + 50);
-    doc.text(format(new Date(audit.completedAt || audit.date), 'MMM d, yyyy'), margin + 50, yPos + 50);
+    doc.text(format(new Date(audit.completedAt || audit.date), 'MMM d, yyyy'), margin, yPos + 66);
   }
 
   // Footer on all pages
