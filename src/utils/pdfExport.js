@@ -2,14 +2,21 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 
+// Amazon Executive Style Colors
 const COLORS = {
-  primary: [255, 153, 0], // Amazon Orange
-  success: [16, 185, 129], // Emerald
-  warning: [245, 158, 11], // Amber
-  danger: [239, 68, 68], // Red
-  text: [30, 41, 59], // Slate 800
-  textLight: [100, 116, 139], // Slate 500
-  border: [226, 232, 240], // Slate 200
+  amazonOrange: [255, 153, 0],
+  amazonDark: [35, 47, 62],
+  black: [0, 0, 0],
+  white: [255, 255, 255],
+  success: [0, 128, 0],
+  warning: [204, 102, 0],
+  danger: [204, 0, 0],
+  gray100: [248, 249, 250],
+  gray200: [233, 236, 239],
+  gray400: [173, 181, 189],
+  gray600: [108, 117, 125],
+  gray800: [52, 58, 64],
+  gray900: [33, 37, 41],
 };
 
 const getGrade = (score) => {
@@ -27,20 +34,27 @@ const getScoreColor = (score) => {
 };
 
 const getAnswerDisplay = (answer, type) => {
-  if (type === 'bool') {
+  if (type === 'bool' || type === 'yesno') {
     if (answer === 'pass') return { text: 'PASS', color: COLORS.success };
     if (answer === 'fail') return { text: 'FAIL', color: COLORS.danger };
-    if (answer === 'na') return { text: 'N/A', color: COLORS.textLight };
-    return { text: '-', color: COLORS.textLight };
+    if (answer === 'na') return { text: 'N/A', color: COLORS.gray600 };
+    return { text: '-', color: COLORS.gray600 };
   }
   if (type === 'rating') {
-    return { text: answer ? `${answer}/5` : '-', color: COLORS.text };
+    return { text: answer ? `${answer}/5` : '-', color: COLORS.gray800 };
   }
-  return { text: answer || '-', color: COLORS.text };
+  return { text: answer || '-', color: COLORS.gray800 };
+};
+
+// Helper to draw a divider line
+const drawDivider = (doc, yPos, margin, pageWidth, color = COLORS.gray200) => {
+  doc.setDrawColor(...color);
+  doc.setLineWidth(0.5);
+  doc.line(margin, yPos, pageWidth - margin, yPos);
 };
 
 export const generateAuditPDF = (audit, template, actions = [], options = {}) => {
-  const { includeAIInsights = false, aiInsights = null } = options;
+  const { includeAIInsights = false, aiInsights = null, includeActions = true } = options;
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -49,190 +63,231 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
 
   // Helper function to add new page if needed
   const checkPageBreak = (requiredSpace = 30) => {
-    if (yPos + requiredSpace > pageHeight - margin) {
+    if (yPos + requiredSpace > pageHeight - 25) {
       doc.addPage();
-      yPos = margin;
+      yPos = 20;
       return true;
     }
     return false;
   };
 
-  // Professional Header with gradient effect
-  doc.setFillColor(...COLORS.primary);
-  doc.rect(0, 0, pageWidth, 40, 'F');
+  // ============================================
+  // EXECUTIVE HEADER - Clean, Minimal
+  // ============================================
 
-  // Secondary accent bar
-  doc.setFillColor(232, 119, 0); // Darker orange
-  doc.rect(0, 40, pageWidth, 3, 'F');
+  // Top accent line (Amazon Orange)
+  doc.setFillColor(...COLORS.amazonOrange);
+  doc.rect(0, 0, pageWidth, 4, 'F');
 
-  doc.setTextColor(255, 255, 255);
+  yPos = 20;
+
+  // Company Name
+  doc.setTextColor(...COLORS.amazonDark);
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('AuditHub', margin, 20);
+  doc.text('AUDIT REPORT', margin, yPos);
 
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Safety Audit Report', margin, 30);
-
-  // Report metadata on the right
+  // Report ID and Date on the right
   doc.setFontSize(9);
-  doc.text(`Generated: ${format(new Date(), 'MMM d, yyyy h:mm a')}`, pageWidth - margin, 18, { align: 'right' });
-  doc.text(`Report ID: ${audit.id.slice(-8).toUpperCase()}`, pageWidth - margin, 28, { align: 'right' });
-  if (audit.createdBy) {
-    doc.text(`Auditor: ${audit.createdBy}`, pageWidth - margin, 38, { align: 'right' });
-  }
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...COLORS.gray600);
+  doc.text(`Report #${audit.shortId || audit.id.slice(-8).toUpperCase()}`, pageWidth - margin, yPos - 5, { align: 'right' });
+  doc.text(format(new Date(), 'MMMM d, yyyy'), pageWidth - margin, yPos + 2, { align: 'right' });
 
-  yPos = 55;
-
-  // Audit Title
-  doc.setTextColor(...COLORS.text);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text(template?.title || audit.templateTitle || 'Audit Report', margin, yPos);
   yPos += 10;
 
-  // Score Badge
-  if (audit.score !== null && audit.score !== undefined) {
-    const scoreColor = getScoreColor(audit.score);
-    const grade = getGrade(audit.score);
+  // Audit Title
+  doc.setTextColor(...COLORS.gray800);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'normal');
+  const titleText = template?.title || audit.templateTitle || 'Safety Audit';
+  doc.text(titleText, margin, yPos);
 
-    // Score box
-    doc.setFillColor(...scoreColor);
-    doc.roundedRect(margin, yPos, 45, 25, 3, 3, 'F');
+  yPos += 12;
+  drawDivider(doc, yPos, margin, pageWidth, COLORS.gray200);
+  yPos += 15;
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text(grade, margin + 12, yPos + 17);
+  // ============================================
+  // EXECUTIVE SUMMARY BOX
+  // ============================================
 
-    doc.setFontSize(10);
-    doc.text(`${audit.score}%`, margin + 25, yPos + 17);
+  // Score Card - Prominent display
+  const scoreBoxWidth = 50;
+  const scoreBoxHeight = 45;
+  const score = audit.score !== null && audit.score !== undefined ? audit.score : 0;
+  const scoreColor = getScoreColor(score);
+  const grade = getGrade(score);
 
-    // Status
-    doc.setTextColor(...COLORS.success);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('COMPLETED', margin + 55, yPos + 12);
+  // Score Box
+  doc.setFillColor(...COLORS.gray100);
+  doc.roundedRect(margin, yPos, scoreBoxWidth, scoreBoxHeight, 3, 3, 'F');
 
-    doc.setTextColor(...COLORS.textLight);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.text(format(new Date(audit.completedAt || audit.date), 'MMM d, yyyy h:mm a'), margin + 55, yPos + 20);
+  doc.setTextColor(...scoreColor);
+  doc.setFontSize(28);
+  doc.setFont('helvetica', 'bold');
+  doc.text(grade, margin + 15, yPos + 22);
 
-    yPos += 35;
+  doc.setFontSize(11);
+  doc.text(`${score}%`, margin + 30, yPos + 22);
+
+  doc.setTextColor(...COLORS.gray600);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('SCORE', margin + scoreBoxWidth / 2, yPos + 38, { align: 'center' });
+
+  // Key Metrics - Right side of score
+  const metricsX = margin + scoreBoxWidth + 15;
+  const metricsWidth = pageWidth - margin - metricsX;
+
+  // Calculate stats
+  let totalQuestions = 0;
+  let passCount = 0;
+  let failCount = 0;
+  let naCount = 0;
+
+  if (template?.sections) {
+    template.sections.forEach(section => {
+      section.items.forEach(item => {
+        totalQuestions++;
+        const answer = audit.answers?.[item.id];
+        if (answer === 'pass') passCount++;
+        else if (answer === 'fail') failCount++;
+        else if (answer === 'na') naCount++;
+      });
+    });
   }
 
-  // Audit Details Box
-  doc.setDrawColor(...COLORS.border);
-  doc.setFillColor(248, 250, 252); // Slate 50
-  doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 35, 2, 2, 'FD');
+  // Metrics Grid
+  const metricColWidth = metricsWidth / 4;
+  const metrics = [
+    { label: 'TOTAL', value: totalQuestions, color: COLORS.gray800 },
+    { label: 'PASS', value: passCount, color: COLORS.success },
+    { label: 'FAIL', value: failCount, color: COLORS.danger },
+    { label: 'N/A', value: naCount, color: COLORS.gray600 },
+  ];
 
-  doc.setTextColor(...COLORS.textLight);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
+  metrics.forEach((metric, idx) => {
+    const x = metricsX + (idx * metricColWidth);
 
-  const col1X = margin + 5;
-  const col2X = pageWidth / 3;
-  const col3X = (pageWidth / 3) * 2;
+    doc.setTextColor(...metric.color);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${metric.value}`, x + metricColWidth / 2, yPos + 18, { align: 'center' });
 
-  doc.text('AUDITOR', col1X, yPos + 8);
-  doc.text('LOCATION', col2X, yPos + 8);
-  doc.text('DATE', col3X, yPos + 8);
+    doc.setTextColor(...COLORS.gray600);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text(metric.label, x + metricColWidth / 2, yPos + 28, { align: 'center' });
+  });
 
-  doc.setTextColor(...COLORS.text);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(audit.createdBy || 'Unknown', col1X, yPos + 18);
-  doc.text(audit.location || 'Not specified', col2X, yPos + 18);
-  doc.text(format(new Date(audit.date), 'MMM d, yyyy'), col3X, yPos + 18);
+  yPos += scoreBoxHeight + 15;
 
-  doc.setTextColor(...COLORS.textLight);
-  doc.setFontSize(8);
-  doc.text('TEMPLATE', col1X, yPos + 26);
-  doc.setTextColor(...COLORS.text);
-  doc.setFontSize(10);
-  doc.text(template?.category || 'General', col1X, yPos + 33);
+  // ============================================
+  // AUDIT DETAILS TABLE
+  // ============================================
 
-  yPos += 45;
+  const detailsData = [
+    ['Auditor', audit.createdBy || 'Unknown'],
+    ['Location', audit.location || 'Not specified'],
+    ['Date', format(new Date(audit.date), 'MMMM d, yyyy')],
+    ['Completed', audit.completedAt ? format(new Date(audit.completedAt), 'MMMM d, yyyy h:mm a') : 'N/A'],
+    ['Template', template?.category || 'General'],
+  ];
 
-  // Sections and Questions
+  autoTable(doc, {
+    startY: yPos,
+    body: detailsData,
+    theme: 'plain',
+    margin: { left: margin, right: margin },
+    styles: {
+      fontSize: 9,
+      cellPadding: { top: 3, bottom: 3, left: 0, right: 10 },
+      textColor: COLORS.gray800,
+    },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 35, textColor: COLORS.gray600 },
+      1: { cellWidth: 'auto' },
+    },
+  });
+
+  yPos = doc.lastAutoTable.finalY + 15;
+
+  // ============================================
+  // FINDINGS SECTIONS
+  // ============================================
+
   if (template?.sections) {
     template.sections.forEach((section, sectionIndex) => {
-      checkPageBreak(40);
+      checkPageBreak(50);
 
-      // Section Header
-      doc.setFillColor(...COLORS.primary);
-      doc.setDrawColor(...COLORS.primary);
-      doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 10, 2, 2, 'F');
+      // Section Header - Clean style
+      doc.setFillColor(...COLORS.amazonDark);
+      doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F');
 
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(11);
+      doc.setTextColor(...COLORS.white);
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text(`${sectionIndex + 1}. ${section.title}`, margin + 5, yPos + 7);
+      doc.text(`${sectionIndex + 1}. ${section.title.toUpperCase()}`, margin + 5, yPos + 5.5);
 
-      yPos += 15;
+      yPos += 12;
 
-      // Questions table
+      // Questions Table - Executive Style
       const tableData = section.items.map((item, idx) => {
         const answer = audit.answers?.[item.id];
         const answerDisplay = getAnswerDisplay(answer, item.type);
         const note = audit.notes?.[item.id];
-        const photoCount = audit.questionPhotos?.[item.id]?.length || 0;
 
         return [
           `${idx + 1}`,
           item.text,
-          item.critical ? 'Yes' : '',
+          item.critical ? 'CRITICAL' : '',
           answerDisplay.text,
           note || '',
-          photoCount > 0 ? `${photoCount} photo${photoCount > 1 ? 's' : ''}` : '',
         ];
       });
 
       autoTable(doc, {
         startY: yPos,
-        head: [['#', 'Question', 'Critical', 'Result', 'Comments / Observations', 'Evidence']],
+        head: [['#', 'INSPECTION ITEM', 'PRIORITY', 'RESULT', 'OBSERVATIONS']],
         body: tableData,
         margin: { left: margin, right: margin },
         styles: {
-          fontSize: 9,
+          fontSize: 8,
           cellPadding: 4,
-          textColor: COLORS.text,
-          lineColor: COLORS.border,
+          textColor: COLORS.gray800,
+          lineColor: COLORS.gray200,
           lineWidth: 0.1,
           overflow: 'linebreak',
         },
         headStyles: {
-          fillColor: [241, 245, 249], // Slate 100
-          textColor: COLORS.textLight,
+          fillColor: COLORS.gray100,
+          textColor: COLORS.gray600,
           fontStyle: 'bold',
-          fontSize: 8,
+          fontSize: 7,
+        },
+        alternateRowStyles: {
+          fillColor: COLORS.white,
         },
         columnStyles: {
           0: { cellWidth: 8, halign: 'center' },
-          1: { cellWidth: 50, overflow: 'linebreak' },
-          2: { cellWidth: 12, halign: 'center' },
-          3: { cellWidth: 14, halign: 'center' },
-          4: { cellWidth: 60, overflow: 'linebreak' }, // Much wider comments field
-          5: { cellWidth: 18, halign: 'center' },
+          1: { cellWidth: 55, overflow: 'linebreak' },
+          2: { cellWidth: 18, halign: 'center', fontSize: 7 },
+          3: { cellWidth: 16, halign: 'center', fontStyle: 'bold' },
+          4: { cellWidth: 'auto', overflow: 'linebreak', fontSize: 8 },
         },
         didParseCell: function (data) {
+          // Result column styling
           if (data.section === 'body' && data.column.index === 3) {
             const value = data.cell.raw;
             if (value === 'PASS') {
               data.cell.styles.textColor = COLORS.success;
-              data.cell.styles.fontStyle = 'bold';
             } else if (value === 'FAIL') {
               data.cell.styles.textColor = COLORS.danger;
-              data.cell.styles.fontStyle = 'bold';
             }
           }
-          if (data.section === 'body' && data.column.index === 2 && data.cell.raw === 'Yes') {
+          // Critical column styling
+          if (data.section === 'body' && data.column.index === 2 && data.cell.raw === 'CRITICAL') {
             data.cell.styles.textColor = COLORS.danger;
-            data.cell.styles.fontStyle = 'bold';
-          }
-          if (data.section === 'body' && data.column.index === 5 && data.cell.raw) {
-            data.cell.styles.textColor = COLORS.primary;
             data.cell.styles.fontStyle = 'bold';
           }
         },
@@ -240,21 +295,20 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
 
       yPos = doc.lastAutoTable.finalY + 10;
 
-      // Add photos for this section if any
+      // Add photos for this section if any exist
       section.items.forEach((item) => {
         const photos = audit.questionPhotos?.[item.id] || [];
         if (photos.length > 0) {
-          checkPageBreak(60);
+          checkPageBreak(50);
 
-          doc.setTextColor(...COLORS.textLight);
-          doc.setFontSize(8);
+          doc.setTextColor(...COLORS.gray600);
+          doc.setFontSize(7);
           doc.setFont('helvetica', 'bold');
-          doc.text(`Photos for: ${item.text.substring(0, 50)}${item.text.length > 50 ? '...' : ''}`, margin, yPos);
-          yPos += 5;
+          doc.text(`EVIDENCE: ${item.text.substring(0, 60)}${item.text.length > 60 ? '...' : ''}`, margin, yPos);
+          yPos += 4;
 
-          // Add photos in a row
-          const photoWidth = 40;
-          const photoHeight = 30;
+          const photoWidth = 35;
+          const photoHeight = 28;
           let xPos = margin;
 
           photos.forEach((photo, idx) => {
@@ -266,75 +320,85 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
 
             try {
               doc.addImage(photo, 'JPEG', xPos, yPos, photoWidth, photoHeight);
+              doc.setDrawColor(...COLORS.gray200);
+              doc.rect(xPos, yPos, photoWidth, photoHeight);
             } catch (e) {
-              // If image fails to load, draw a placeholder
-              doc.setDrawColor(...COLORS.border);
-              doc.setFillColor(248, 250, 252);
-              doc.roundedRect(xPos, yPos, photoWidth, photoHeight, 2, 2, 'FD');
-              doc.setTextColor(...COLORS.textLight);
-              doc.setFontSize(7);
+              doc.setDrawColor(...COLORS.gray200);
+              doc.setFillColor(...COLORS.gray100);
+              doc.rect(xPos, yPos, photoWidth, photoHeight, 'FD');
+              doc.setTextColor(...COLORS.gray600);
+              doc.setFontSize(6);
               doc.text(`Photo ${idx + 1}`, xPos + photoWidth/2, yPos + photoHeight/2, { align: 'center' });
             }
 
             xPos += photoWidth + 5;
           });
 
-          yPos += photoHeight + 10;
+          yPos += photoHeight + 8;
         }
       });
     });
   }
 
-  // Actions Section
-  const auditActions = actions.filter(a => a.auditId === audit.id);
+  // ============================================
+  // CORRECTIVE ACTIONS SECTION
+  // ============================================
+
+  const auditActions = includeActions ? actions.filter(a => a.auditId === audit.id) : [];
   if (auditActions.length > 0) {
-    checkPageBreak(50);
+    checkPageBreak(60);
+
+    yPos += 5;
+    drawDivider(doc, yPos, margin, pageWidth, COLORS.gray200);
+    yPos += 10;
 
     // Actions Header
-    doc.setFillColor(...COLORS.danger);
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 10, 2, 2, 'F');
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11);
+    doc.setTextColor(...COLORS.danger);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Actions (${auditActions.length})`, margin + 5, yPos + 7);
+    doc.text('CORRECTIVE ACTIONS', margin, yPos);
 
-    yPos += 15;
+    doc.setTextColor(...COLORS.gray600);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${auditActions.length} action${auditActions.length > 1 ? 's' : ''} required`, margin + 55, yPos);
 
-    // Actions table
+    yPos += 8;
+
+    // Actions Table
     const actionTableData = auditActions.map((action, idx) => [
       `${idx + 1}`,
-      action.questionText || action.title || 'Action',
+      action.questionText || action.title || 'Action Required',
       action.priority?.toUpperCase() || 'MEDIUM',
       action.status?.replace('_', ' ')?.toUpperCase() || 'OPEN',
-      action.notes || action.description || '',
-      action.dueDate ? format(new Date(action.dueDate), 'MMM d, yyyy') : '',
+      action.owner || '-',
+      action.dueDate ? format(new Date(action.dueDate), 'MMM d, yyyy') : '-',
     ]);
 
     autoTable(doc, {
       startY: yPos,
-      head: [['#', 'Issue', 'Priority', 'Status', 'Notes', 'Due Date']],
+      head: [['#', 'ISSUE DESCRIPTION', 'PRIORITY', 'STATUS', 'OWNER', 'DUE DATE']],
       body: actionTableData,
       margin: { left: margin, right: margin },
       styles: {
-        fontSize: 9,
-        cellPadding: 3,
-        textColor: COLORS.text,
-        lineColor: COLORS.border,
+        fontSize: 8,
+        cellPadding: 4,
+        textColor: COLORS.gray800,
+        lineColor: COLORS.gray200,
         lineWidth: 0.1,
       },
       headStyles: {
-        fillColor: [254, 226, 226], // Red 100
+        fillColor: [254, 226, 226],
         textColor: COLORS.danger,
         fontStyle: 'bold',
-        fontSize: 8,
+        fontSize: 7,
       },
       columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 'auto' },
-        2: { cellWidth: 18, halign: 'center' },
+        0: { cellWidth: 8, halign: 'center' },
+        1: { cellWidth: 'auto', overflow: 'linebreak' },
+        2: { cellWidth: 18, halign: 'center', fontStyle: 'bold' },
         3: { cellWidth: 22, halign: 'center' },
-        4: { cellWidth: 35 },
+        4: { cellWidth: 18, halign: 'center' },
         5: { cellWidth: 25, halign: 'center' },
       },
       didParseCell: function (data) {
@@ -342,13 +406,10 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
           const value = data.cell.raw;
           if (value === 'HIGH') {
             data.cell.styles.textColor = COLORS.danger;
-            data.cell.styles.fontStyle = 'bold';
           } else if (value === 'MEDIUM') {
             data.cell.styles.textColor = COLORS.warning;
-            data.cell.styles.fontStyle = 'bold';
           } else {
-            data.cell.styles.textColor = [59, 130, 246]; // Blue 500
-            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.textColor = [0, 102, 204];
           }
         }
         if (data.section === 'body' && data.column.index === 3) {
@@ -367,325 +428,339 @@ export const generateAuditPDF = (audit, template, actions = [], options = {}) =>
     yPos = doc.lastAutoTable.finalY + 10;
   }
 
-  // Global Notes
+  // ============================================
+  // ADDITIONAL NOTES
+  // ============================================
+
   if (audit.globalNotes) {
     checkPageBreak(50);
 
-    doc.setFillColor(248, 250, 252);
-    const notesHeight = Math.max(40, 30 + audit.globalNotes.length / 3);
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, notesHeight, 3, 3, 'F');
+    drawDivider(doc, yPos, margin, pageWidth, COLORS.gray200);
+    yPos += 10;
 
-    doc.setTextColor(...COLORS.textLight);
-    doc.setFontSize(9);
+    doc.setTextColor(...COLORS.gray600);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text('ADDITIONAL NOTES', margin + 8, yPos + 12);
+    doc.text('ADDITIONAL NOTES', margin, yPos);
+    yPos += 6;
 
-    doc.setTextColor(...COLORS.text);
-    doc.setFontSize(10);
+    doc.setTextColor(...COLORS.gray800);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    const splitNotes = doc.splitTextToSize(audit.globalNotes, pageWidth - 2 * margin - 16);
-    doc.text(splitNotes, margin + 8, yPos + 22);
+    const splitNotes = doc.splitTextToSize(audit.globalNotes, pageWidth - 2 * margin);
+    doc.text(splitNotes, margin, yPos);
 
-    yPos += notesHeight + 10;
+    yPos += splitNotes.length * 4 + 10;
   }
 
-  // Audit Insights Section
+  // ============================================
+  // AI INSIGHTS SECTION
+  // ============================================
+
   if (includeAIInsights && aiInsights) {
     checkPageBreak(80);
 
-    // Insights Header
-    doc.setFillColor(79, 70, 229); // Indigo
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 12, 3, 3, 'F');
+    doc.addPage();
+    yPos = 20;
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11);
+    // AI Insights Header
+    doc.setFillColor(...COLORS.amazonOrange);
+    doc.rect(0, 0, pageWidth, 4, 'F');
+
+    doc.setTextColor(...COLORS.amazonDark);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Audit Insights', margin + 8, yPos + 8);
+    doc.text('AI-GENERATED INSIGHTS', margin, yPos);
 
-    yPos += 18;
+    yPos += 10;
+    drawDivider(doc, yPos, margin, pageWidth, COLORS.amazonOrange);
+    yPos += 12;
 
-    // Summary Box
+    // Executive Summary
     if (aiInsights.summary) {
-      doc.setFillColor(238, 242, 255); // Indigo 50
-      doc.setDrawColor(199, 210, 254); // Indigo 200
-      const summaryLines = doc.splitTextToSize(aiInsights.summary, pageWidth - 2 * margin - 16);
-      const summaryHeight = 20 + summaryLines.length * 5;
-      doc.roundedRect(margin, yPos, pageWidth - 2 * margin, summaryHeight, 3, 3, 'FD');
-
-      doc.setTextColor(79, 70, 229);
+      doc.setTextColor(...COLORS.gray600);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.text('Summary', margin + 8, yPos + 10);
+      doc.text('EXECUTIVE SUMMARY', margin, yPos);
+      yPos += 6;
 
-      doc.setTextColor(...COLORS.text);
+      doc.setTextColor(...COLORS.gray800);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.text(summaryLines, margin + 8, yPos + 18);
-
-      yPos += summaryHeight + 8;
+      const summaryLines = doc.splitTextToSize(aiInsights.summary, pageWidth - 2 * margin);
+      doc.text(summaryLines, margin, yPos);
+      yPos += summaryLines.length * 4 + 10;
     }
 
     // Key Findings
     if (aiInsights.keyFindings && aiInsights.keyFindings.length > 0) {
-      checkPageBreak(50);
+      checkPageBreak(40);
 
-      doc.setTextColor(79, 70, 229);
+      doc.setTextColor(...COLORS.gray600);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.text('Key Findings', margin, yPos);
+      doc.text('KEY FINDINGS', margin, yPos);
       yPos += 6;
 
       aiInsights.keyFindings.forEach((finding, idx) => {
-        const findingLines = doc.splitTextToSize(`${idx + 1}. ${finding}`, pageWidth - 2 * margin - 10);
-        doc.setTextColor(...COLORS.text);
+        checkPageBreak(15);
+        const lines = doc.splitTextToSize(`${idx + 1}. ${finding}`, pageWidth - 2 * margin - 10);
+        doc.setTextColor(...COLORS.gray800);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.text(findingLines, margin + 5, yPos);
-        yPos += findingLines.length * 4 + 3;
+        doc.text(lines, margin + 5, yPos);
+        yPos += lines.length * 4 + 3;
       });
-
       yPos += 5;
     }
 
     // Recommendations
     if (aiInsights.recommendations && aiInsights.recommendations.length > 0) {
-      checkPageBreak(50);
+      checkPageBreak(40);
 
-      doc.setTextColor(16, 185, 129); // Emerald
+      doc.setTextColor(...COLORS.success);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.text('Recommendations', margin, yPos);
+      doc.text('RECOMMENDATIONS', margin, yPos);
       yPos += 6;
 
       aiInsights.recommendations.forEach((rec, idx) => {
-        const recLines = doc.splitTextToSize(`${idx + 1}. ${rec}`, pageWidth - 2 * margin - 10);
-        doc.setTextColor(...COLORS.text);
+        checkPageBreak(15);
+        const lines = doc.splitTextToSize(`${idx + 1}. ${rec}`, pageWidth - 2 * margin - 10);
+        doc.setTextColor(...COLORS.gray800);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.text(recLines, margin + 5, yPos);
-        yPos += recLines.length * 4 + 3;
+        doc.text(lines, margin + 5, yPos);
+        yPos += lines.length * 4 + 3;
       });
-
       yPos += 5;
     }
 
     // Risk Areas
     if (aiInsights.riskAreas && aiInsights.riskAreas.length > 0) {
-      checkPageBreak(50);
+      checkPageBreak(40);
 
-      doc.setTextColor(239, 68, 68); // Red
+      doc.setTextColor(...COLORS.danger);
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
-      doc.text('Areas of Concern', margin, yPos);
+      doc.text('AREAS OF CONCERN', margin, yPos);
       yPos += 6;
 
       aiInsights.riskAreas.forEach((risk, idx) => {
-        const riskLines = doc.splitTextToSize(`${idx + 1}. ${risk}`, pageWidth - 2 * margin - 10);
-        doc.setTextColor(...COLORS.text);
+        checkPageBreak(15);
+        const lines = doc.splitTextToSize(`${idx + 1}. ${risk}`, pageWidth - 2 * margin - 10);
+        doc.setTextColor(...COLORS.gray800);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.text(riskLines, margin + 5, yPos);
-        yPos += riskLines.length * 4 + 3;
+        doc.text(lines, margin + 5, yPos);
+        yPos += lines.length * 4 + 3;
       });
-
       yPos += 10;
     }
 
-    // Disclaimer
-    doc.setFillColor(254, 243, 199); // Amber 100
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 16, 2, 2, 'F');
-    doc.setTextColor(180, 83, 9); // Amber 700
+    // AI Disclaimer
+    checkPageBreak(25);
+    doc.setFillColor(...COLORS.gray100);
+    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 18, 2, 2, 'F');
+    doc.setTextColor(...COLORS.gray600);
     doc.setFontSize(7);
     doc.setFont('helvetica', 'italic');
-    doc.text('Note: Insights are generated automatically and should be reviewed by qualified personnel.', margin + 5, yPos + 6);
-    doc.text('Always verify recommendations against current safety regulations and standards.', margin + 5, yPos + 12);
+    doc.text('DISCLAIMER: These insights are generated by AI and should be reviewed by qualified personnel.', margin + 5, yPos + 6);
+    doc.text('Always verify recommendations against current safety regulations and organizational policies.', margin + 5, yPos + 12);
 
     yPos += 25;
   }
 
-  // Signature
-  if (audit.signature) {
-    checkPageBreak(50);
+  // ============================================
+  // SIGNATURE SECTION
+  // ============================================
 
-    doc.setTextColor(...COLORS.textLight);
+  if (audit.signature) {
+    checkPageBreak(60);
+
+    yPos += 5;
+    drawDivider(doc, yPos, margin, pageWidth, COLORS.gray200);
+    yPos += 10;
+
+    doc.setTextColor(...COLORS.gray600);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text('AUDITOR SIGNATURE', margin, yPos + 5);
+    doc.text('AUDITOR VERIFICATION', margin, yPos);
+    yPos += 10;
 
     try {
-      doc.addImage(audit.signature, 'PNG', margin, yPos + 10, 60, 30);
+      doc.addImage(audit.signature, 'PNG', margin, yPos, 50, 25);
     } catch (e) {
-      doc.setTextColor(...COLORS.text);
+      doc.setTextColor(...COLORS.gray800);
       doc.setFontSize(9);
-      doc.text('[Signature on file]', margin, yPos + 25);
+      doc.text('[Signature on file]', margin, yPos + 15);
     }
 
-    doc.setDrawColor(...COLORS.border);
-    doc.line(margin, yPos + 42, margin + 70, yPos + 42);
+    doc.setDrawColor(...COLORS.gray400);
+    doc.line(margin, yPos + 28, margin + 60, yPos + 28);
 
-    doc.setTextColor(...COLORS.textLight);
+    doc.setTextColor(...COLORS.gray600);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text(audit.createdBy || 'Auditor', margin, yPos + 50);
-    doc.text(format(new Date(audit.completedAt || audit.date), 'MMM d, yyyy'), margin + 50, yPos + 50);
+    doc.text(audit.createdBy || 'Auditor', margin, yPos + 35);
+    doc.text(format(new Date(audit.completedAt || audit.date), 'MMMM d, yyyy'), margin, yPos + 42);
   }
 
-  // Footer on all pages
+  // ============================================
+  // FOOTER ON ALL PAGES
+  // ============================================
+
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.setTextColor(...COLORS.textLight);
+
+    // Bottom accent line
+    doc.setFillColor(...COLORS.amazonOrange);
+    doc.rect(0, pageHeight - 3, pageWidth, 3, 'F');
+
+    // Page number
+    doc.setTextColor(...COLORS.gray600);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text(
-      `Page ${i} of ${pageCount}`,
-      pageWidth / 2,
-      pageHeight - 10,
-      { align: 'center' }
-    );
-    doc.text(
-      'Generated by AuditHub',
-      margin,
-      pageHeight - 10
-    );
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+
+    // Confidential notice
+    doc.setFontSize(7);
+    doc.text('CONFIDENTIAL', margin, pageHeight - 8);
+
+    // Generation timestamp
+    doc.text(`Generated: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
   }
 
-  // Generate filename and save
+  // ============================================
+  // SAVE FILE
+  // ============================================
+
   const auditDate = format(new Date(audit.date), 'yyyy-MM-dd');
   const templateName = (template?.title || audit.templateTitle || 'Audit').replace(/[^a-zA-Z0-9]/g, '_');
-  const filename = `${templateName}_${audit.location || 'Station'}_${auditDate}.pdf`;
+  const filename = `${templateName}_${audit.location || 'Report'}_${auditDate}.pdf`;
 
   doc.save(filename);
 
   return filename;
 };
 
-// Export actions to PDF
+// ============================================
+// ACTIONS PDF EXPORT - Executive Style
+// ============================================
+
 export const generateActionsPDF = (actions, stationFilter = null) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 15;
+  const margin = 20;
   let yPos = margin;
 
-  // Filter actions if station specified
   const filteredActions = stationFilter
     ? actions.filter(a => a.location === stationFilter)
     : actions;
 
-  // Helper function to add new page if needed
   const checkPageBreak = (requiredSpace = 30) => {
-    if (yPos + requiredSpace > pageHeight - margin) {
+    if (yPos + requiredSpace > pageHeight - 25) {
       doc.addPage();
-      yPos = margin;
+      yPos = 20;
       return true;
     }
     return false;
   };
 
-  // Header
-  doc.setFillColor(...COLORS.primary);
-  doc.rect(0, 0, pageWidth, 35, 'F');
+  // ============================================
+  // HEADER
+  // ============================================
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(22);
+  doc.setFillColor(...COLORS.amazonOrange);
+  doc.rect(0, 0, pageWidth, 4, 'F');
+
+  yPos = 20;
+
+  doc.setTextColor(...COLORS.amazonDark);
+  doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('AuditHub', margin, 18);
-
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Actions Report', margin, 27);
+  doc.text('ACTIONS REPORT', margin, yPos);
 
   doc.setFontSize(9);
-  doc.text(`Generated: ${format(new Date(), 'MMM d, yyyy h:mm a')}`, pageWidth - margin, 18, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...COLORS.gray600);
+  doc.text(format(new Date(), 'MMMM d, yyyy'), pageWidth - margin, yPos, { align: 'right' });
   if (stationFilter) {
-    doc.text(`Station: ${stationFilter}`, pageWidth - margin, 27, { align: 'right' });
+    doc.text(`Location: ${stationFilter}`, pageWidth - margin, yPos + 7, { align: 'right' });
   }
 
-  yPos = 50;
+  yPos += 15;
+  drawDivider(doc, yPos, margin, pageWidth, COLORS.gray200);
+  yPos += 15;
 
-  // Summary Stats
+  // ============================================
+  // SUMMARY METRICS
+  // ============================================
+
   const openCount = filteredActions.filter(a => a.status === 'open').length;
   const inProgressCount = filteredActions.filter(a => a.status === 'in_progress').length;
   const completedCount = filteredActions.filter(a => a.status === 'completed').length;
   const highPriorityCount = filteredActions.filter(a => a.priority === 'high').length;
 
-  doc.setTextColor(...COLORS.text);
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Actions Summary', margin, yPos);
-  yPos += 10;
-
-  // Stats boxes
   const boxWidth = (pageWidth - 2 * margin - 15) / 4;
+  const boxHeight = 30;
 
-  // Open
-  doc.setFillColor(...COLORS.danger);
-  doc.roundedRect(margin, yPos, boxWidth, 25, 2, 2, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`${openCount}`, margin + boxWidth/2, yPos + 12, { align: 'center' });
-  doc.setFontSize(8);
-  doc.text('OPEN', margin + boxWidth/2, yPos + 20, { align: 'center' });
-
-  // In Progress
-  doc.setFillColor(...COLORS.warning);
-  doc.roundedRect(margin + boxWidth + 5, yPos, boxWidth, 25, 2, 2, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`${inProgressCount}`, margin + boxWidth + 5 + boxWidth/2, yPos + 12, { align: 'center' });
-  doc.setFontSize(8);
-  doc.text('IN PROGRESS', margin + boxWidth + 5 + boxWidth/2, yPos + 20, { align: 'center' });
-
-  // Completed
-  doc.setFillColor(...COLORS.success);
-  doc.roundedRect(margin + (boxWidth + 5) * 2, yPos, boxWidth, 25, 2, 2, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`${completedCount}`, margin + (boxWidth + 5) * 2 + boxWidth/2, yPos + 12, { align: 'center' });
-  doc.setFontSize(8);
-  doc.text('COMPLETED', margin + (boxWidth + 5) * 2 + boxWidth/2, yPos + 20, { align: 'center' });
-
-  // High Priority
-  doc.setFillColor(239, 68, 68);
-  doc.roundedRect(margin + (boxWidth + 5) * 3, yPos, boxWidth, 25, 2, 2, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`${highPriorityCount}`, margin + (boxWidth + 5) * 3 + boxWidth/2, yPos + 12, { align: 'center' });
-  doc.setFontSize(8);
-  doc.text('HIGH PRIORITY', margin + (boxWidth + 5) * 3 + boxWidth/2, yPos + 20, { align: 'center' });
-
-  yPos += 35;
-
-  // Group actions by status
-  const statusGroups = [
-    { status: 'open', label: 'Open Actions', color: COLORS.danger },
-    { status: 'in_progress', label: 'In Progress', color: COLORS.warning },
-    { status: 'completed', label: 'Completed Actions', color: COLORS.success },
+  const summaryBoxes = [
+    { label: 'OPEN', value: openCount, color: COLORS.danger },
+    { label: 'IN PROGRESS', value: inProgressCount, color: COLORS.warning },
+    { label: 'COMPLETED', value: completedCount, color: COLORS.success },
+    { label: 'HIGH PRIORITY', value: highPriorityCount, color: COLORS.danger },
   ];
 
-  statusGroups.forEach(({ status, label, color }) => {
+  summaryBoxes.forEach((box, idx) => {
+    const x = margin + idx * (boxWidth + 5);
+
+    doc.setFillColor(...COLORS.gray100);
+    doc.roundedRect(x, yPos, boxWidth, boxHeight, 2, 2, 'F');
+
+    doc.setTextColor(...box.color);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${box.value}`, x + boxWidth / 2, yPos + 14, { align: 'center' });
+
+    doc.setTextColor(...COLORS.gray600);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text(box.label, x + boxWidth / 2, yPos + 24, { align: 'center' });
+  });
+
+  yPos += boxHeight + 15;
+
+  // ============================================
+  // ACTIONS BY STATUS
+  // ============================================
+
+  const statusGroups = [
+    { status: 'open', label: 'OPEN ACTIONS', color: COLORS.danger, bgColor: [254, 226, 226] },
+    { status: 'in_progress', label: 'IN PROGRESS', color: COLORS.warning, bgColor: [254, 243, 199] },
+    { status: 'completed', label: 'COMPLETED', color: COLORS.success, bgColor: [220, 252, 231] },
+  ];
+
+  statusGroups.forEach(({ status, label, color, bgColor }) => {
     const groupActions = filteredActions.filter(a => a.status === status);
     if (groupActions.length === 0) return;
 
     checkPageBreak(50);
 
-    // Section header
+    // Section Header
     doc.setFillColor(...color);
-    doc.roundedRect(margin, yPos, pageWidth - 2 * margin, 10, 2, 2, 'F');
+    doc.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F');
 
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11);
+    doc.setTextColor(...COLORS.white);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${label} (${groupActions.length})`, margin + 5, yPos + 7);
+    doc.text(`${label} (${groupActions.length})`, margin + 5, yPos + 5.5);
 
-    yPos += 15;
+    yPos += 12;
 
-    // Actions table
+    // Actions Table
     const tableData = groupActions.map((action, idx) => [
       `${idx + 1}`,
       action.questionText || action.title || 'Action',
@@ -693,81 +768,76 @@ export const generateActionsPDF = (actions, stationFilter = null) => {
       action.location || '-',
       action.notes || action.description || '',
       action.dueDate ? format(new Date(action.dueDate), 'MMM d') : '-',
-      action.createdAt ? format(new Date(action.createdAt), 'MMM d') : '-',
     ]);
 
     autoTable(doc, {
       startY: yPos,
-      head: [['#', 'Issue', 'Priority', 'Location', 'Notes', 'Due', 'Created']],
+      head: [['#', 'ISSUE', 'PRIORITY', 'LOCATION', 'NOTES', 'DUE']],
       body: tableData,
       margin: { left: margin, right: margin },
       styles: {
         fontSize: 8,
-        cellPadding: 2,
-        textColor: COLORS.text,
-        lineColor: COLORS.border,
+        cellPadding: 3,
+        textColor: COLORS.gray800,
+        lineColor: COLORS.gray200,
         lineWidth: 0.1,
       },
       headStyles: {
-        fillColor: [241, 245, 249],
-        textColor: COLORS.textLight,
+        fillColor: bgColor,
+        textColor: color,
         fontStyle: 'bold',
         fontSize: 7,
       },
       columnStyles: {
         0: { cellWidth: 8, halign: 'center' },
-        1: { cellWidth: 'auto' },
-        2: { cellWidth: 16, halign: 'center' },
-        3: { cellWidth: 18, halign: 'center' },
-        4: { cellWidth: 40 },
-        5: { cellWidth: 18, halign: 'center' },
-        6: { cellWidth: 18, halign: 'center' },
+        1: { cellWidth: 'auto', overflow: 'linebreak' },
+        2: { cellWidth: 18, halign: 'center', fontStyle: 'bold' },
+        3: { cellWidth: 22, halign: 'center' },
+        4: { cellWidth: 45, overflow: 'linebreak' },
+        5: { cellWidth: 20, halign: 'center' },
       },
       didParseCell: function (data) {
         if (data.section === 'body' && data.column.index === 2) {
           const value = data.cell.raw;
           if (value === 'HIGH') {
             data.cell.styles.textColor = COLORS.danger;
-            data.cell.styles.fontStyle = 'bold';
           } else if (value === 'MEDIUM') {
             data.cell.styles.textColor = COLORS.warning;
-            data.cell.styles.fontStyle = 'bold';
           } else {
-            data.cell.styles.textColor = [59, 130, 246];
-            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.textColor = [0, 102, 204];
           }
         }
       },
     });
 
-    yPos = doc.lastAutoTable.finalY + 10;
+    yPos = doc.lastAutoTable.finalY + 12;
   });
 
-  // Footer on all pages
+  // ============================================
+  // FOOTER
+  // ============================================
+
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.setTextColor(...COLORS.textLight);
+
+    doc.setFillColor(...COLORS.amazonOrange);
+    doc.rect(0, pageHeight - 3, pageWidth, 3, 'F');
+
+    doc.setTextColor(...COLORS.gray600);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text(
-      `Page ${i} of ${pageCount}`,
-      pageWidth / 2,
-      pageHeight - 10,
-      { align: 'center' }
-    );
-    doc.text(
-      'Generated by AuditHub',
-      margin,
-      pageHeight - 10
-    );
+    doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+    doc.setFontSize(7);
+    doc.text('CONFIDENTIAL', margin, pageHeight - 8);
+    doc.text(`Generated: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
   }
 
-  // Generate filename and save
+  // Save
   const dateStr = format(new Date(), 'yyyy-MM-dd');
   const filename = stationFilter
     ? `Actions_${stationFilter}_${dateStr}.pdf`
-    : `Actions_All_${dateStr}.pdf`;
+    : `Actions_Report_${dateStr}.pdf`;
 
   doc.save(filename);
 
