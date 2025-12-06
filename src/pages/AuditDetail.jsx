@@ -45,6 +45,7 @@ export default function AuditDetail() {
   // Export dialog state
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [includeAIInsights, setIncludeAIInsights] = useState(false);
+  const [includeActions, setIncludeActions] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
 
   const audit = audits.find(a => a.id === id);
@@ -99,6 +100,7 @@ export default function AuditDetail() {
       const filename = generateAuditPDF(audit, template, auditActions, {
         includeAIInsights,
         aiInsights: pdfInsights,
+        includeActions,
       });
       toast.success(`Downloaded ${filename}`, { id: 'pdf-export' });
       setShowExportDialog(false);
@@ -112,7 +114,9 @@ export default function AuditDetail() {
 
   const handleQuickExport = () => {
     try {
-      const filename = generateAuditPDF(audit, template, auditActions);
+      const filename = generateAuditPDF(audit, template, auditActions, {
+        includeActions,
+      });
       toast.success(`Downloaded ${filename}`);
     } catch (error) {
       toast.error('Failed to generate PDF');
@@ -242,23 +246,58 @@ export default function AuditDetail() {
               </div>
 
               {/* Export Options */}
-              <div className="space-y-4 mb-6">
-                <label className="flex items-start gap-4 p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer hover:border-amazon-orange/50 transition-colors">
+              <div className="space-y-3 mb-6">
+                {/* Include Actions */}
+                {auditActions.length > 0 && (
+                  <label className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-colors ${
+                    includeActions
+                      ? 'border-red-300 dark:border-red-700 bg-red-50/50 dark:bg-red-900/10'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-amazon-orange/50'
+                  }`}>
+                    <input
+                      type="checkbox"
+                      checked={includeActions}
+                      onChange={(e) => setIncludeActions(e.target.checked)}
+                      className="mt-1 w-5 h-5 rounded border-slate-300 text-red-500 focus:ring-red-500"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <ClipboardList size={18} className="text-red-500" />
+                        <span className="font-medium text-slate-900 dark:text-white">
+                          Include Corrective Actions
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-medium">
+                          {auditActions.length}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        Include open and completed corrective actions in the report
+                      </p>
+                    </div>
+                  </label>
+                )}
+
+                {/* Include AI Insights */}
+                <label className={`flex items-start gap-4 p-4 border-2 rounded-xl cursor-pointer transition-colors ${
+                  includeAIInsights
+                    ? 'border-purple-300 dark:border-purple-700 bg-purple-50/50 dark:bg-purple-900/10'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-amazon-orange/50'
+                }`}>
                   <input
                     type="checkbox"
                     checked={includeAIInsights}
                     onChange={(e) => setIncludeAIInsights(e.target.checked)}
-                    className="mt-1 w-5 h-5 rounded border-slate-300 text-amazon-orange focus:ring-amazon-orange"
+                    className="mt-1 w-5 h-5 rounded border-slate-300 text-purple-500 focus:ring-purple-500"
                   />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <Sparkles size={18} className="text-purple-500" />
                       <span className="font-medium text-slate-900 dark:text-white">
-                        Include Audit Insights
+                        Include AI Insights
                       </span>
                     </div>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                      Add generated summary, findings, recommendations, and risk analysis to your report
+                      Add AI-generated summary, findings, and recommendations
                     </p>
                   </div>
                 </label>
