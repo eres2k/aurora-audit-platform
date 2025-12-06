@@ -10,47 +10,12 @@ import {
   Trash2,
   AlertTriangle,
   X,
-  RotateCcw,
   RefreshCw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { Card, Button, Badge } from '../components/ui';
 import { usersApi } from '../utils/api';
-
-// Default team members
-const DEFAULT_TEAM_MEMBERS = [
-  {
-    id: 'default-1',
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@company.com',
-    role: 'Auditor',
-    station: 'DVI2',
-    auditsCompleted: 18,
-    avatar: null,
-    isDefault: true,
-  },
-  {
-    id: 'default-2',
-    name: 'Mike Chen',
-    email: 'mike.chen@company.com',
-    role: 'Auditor',
-    station: 'DAP5',
-    auditsCompleted: 32,
-    avatar: null,
-    isDefault: true,
-  },
-  {
-    id: 'default-3',
-    name: 'Emily Brown',
-    email: 'emily.brown@company.com',
-    role: 'Supervisor',
-    station: 'DVI1',
-    auditsCompleted: 45,
-    avatar: null,
-    isDefault: true,
-  },
-];
 
 export default function Team() {
   const { user, selectedStation } = useAuth();
@@ -90,18 +55,14 @@ export default function Team() {
   useEffect(() => {
     const loadTeamMembers = () => {
       const savedMembers = localStorage.getItem('teamMembers');
-      const deletedDefaults = JSON.parse(localStorage.getItem('deletedDefaultTeamMembers') || '[]');
 
       if (savedMembers) {
         const parsed = JSON.parse(savedMembers);
-        // Filter out deleted defaults and merge with remaining defaults
-        const remainingDefaults = DEFAULT_TEAM_MEMBERS.filter(m => !deletedDefaults.includes(m.id));
         const customMembers = parsed.filter(m => !m.isDefault);
-        setTeamMembers([currentUserMember, ...remainingDefaults, ...customMembers]);
+        setTeamMembers([currentUserMember, ...customMembers]);
       } else {
-        // First load - filter out deleted defaults
-        const remainingDefaults = DEFAULT_TEAM_MEMBERS.filter(m => !deletedDefaults.includes(m.id));
-        setTeamMembers([currentUserMember, ...remainingDefaults]);
+        // No saved members - just show current user
+        setTeamMembers([currentUserMember]);
       }
     };
     loadTeamMembers();
@@ -134,36 +95,11 @@ export default function Team() {
     const member = deleteModal.member;
     if (!member) return;
 
-    // If it's a default member, track the deletion
-    if (member.isDefault) {
-      const deletedDefaults = JSON.parse(localStorage.getItem('deletedDefaultTeamMembers') || '[]');
-      if (!deletedDefaults.includes(member.id)) {
-        deletedDefaults.push(member.id);
-        localStorage.setItem('deletedDefaultTeamMembers', JSON.stringify(deletedDefaults));
-      }
-    }
-
     const updated = teamMembers.filter(m => m.id !== member.id);
     setTeamMembers(updated);
     saveTeamMembers(updated);
     toast.success(`${member.name} has been removed from the team`);
     setDeleteModal({ open: false, member: null });
-  };
-
-  // Restore default team members
-  const restoreDefaultMembers = () => {
-    localStorage.removeItem('deletedDefaultTeamMembers');
-    const customMembers = teamMembers.filter(m => !m.isCurrentUser && !m.isDefault);
-    const restored = [currentUserMember, ...DEFAULT_TEAM_MEMBERS, ...customMembers];
-    setTeamMembers(restored);
-    saveTeamMembers(restored);
-    toast.success('Default team members restored');
-  };
-
-  // Check if any defaults are deleted
-  const hasDeletedDefaults = () => {
-    const deletedDefaults = JSON.parse(localStorage.getItem('deletedDefaultTeamMembers') || '[]');
-    return deletedDefaults.length > 0;
   };
 
   const getRoleConfig = (role) => {
@@ -188,11 +124,6 @@ export default function Team() {
           </p>
         </div>
         <div className="flex gap-2">
-          {hasDeletedDefaults() && (
-            <Button variant="secondary" icon={RotateCcw} onClick={restoreDefaultMembers}>
-              Restore Defaults
-            </Button>
-          )}
           <Button variant="primary" icon={UserPlus}>
             Invite Member
           </Button>
@@ -403,11 +334,6 @@ export default function Team() {
 
               <p className="text-slate-600 dark:text-slate-300 mb-6">
                 Are you sure you want to remove <strong>{deleteModal.member?.name}</strong> from the team?
-                {deleteModal.member?.isDefault && (
-                  <span className="block mt-2 text-sm text-amber-600 dark:text-amber-400">
-                    Note: You can restore default team members using the "Restore Defaults" button.
-                  </span>
-                )}
               </p>
 
               <div className="flex gap-3">

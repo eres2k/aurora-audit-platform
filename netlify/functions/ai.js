@@ -687,15 +687,25 @@ Guidelines:
   const response = result.response;
   const text = response.text();
 
+  let parsed;
   try {
-    return JSON.parse(text);
+    parsed = JSON.parse(text);
   } catch (e) {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+      parsed = JSON.parse(jsonMatch[0]);
+    } else {
+      throw new Error('Failed to parse AI response as JSON');
     }
-    throw new Error('Failed to parse AI response as JSON');
   }
+
+  // Normalize the response to ensure consistent property names
+  return {
+    translatedQuestion: parsed.translatedQuestion || parsed.translated_question || parsed.question || questionText,
+    stepsToCheck: parsed.stepsToCheck || parsed.steps_to_check || parsed.steps || [],
+    keywords: parsed.keywords || parsed.key_terms || [],
+    tips: parsed.tips || parsed.tip || parsed.guidance || '',
+  };
 };
 
 // Analyze image for safety compliance
