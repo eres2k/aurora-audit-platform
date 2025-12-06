@@ -639,6 +639,7 @@ Audit question:
 Provide practical guidance for an auditor. Return a JSON object:
 {
   "translatedQuestion": "A clearer, more detailed version of the question if needed, or the original question",
+  "guideline": "A clear explanation of what this audit item is checking and why it matters for workplace safety",
   "stepsToCheck": [
     "Step 1: First practical thing to verify during inspection",
     "Step 2: What specific things to look for or measure",
@@ -649,39 +650,44 @@ Provide practical guidance for an auditor. Return a JSON object:
   "tips": "Additional tips or context that would help the auditor perform a thorough inspection"
 }
 
-Guidelines:
+Requirements:
+- guideline should explain the purpose and importance of this audit check
 - Provide 3-5 practical, actionable steps for physical inspection
 - Include specific things to look for, measure, or verify
 - Add relevant safety standards or regulations if applicable
 - Use clear, professional language
 - Focus on what makes a complete and thorough inspection`
-    : `You are a professional translator and workplace safety expert. Your task is to translate an audit question and provide practical steps to verify/check the item.
+    : `You are a professional translator and workplace safety expert. Your task is to TRANSLATE an audit question from English into ${targetLanguageName} and provide practical guidance.
+
+IMPORTANT: You MUST translate the question into ${targetLanguageName}. Do NOT repeat the English text. Do NOT just describe what should be translated. Actually provide the translation.
 
 Original audit question (in English):
 "${questionText}"
 
 Target language: ${targetLanguageName} (${targetLanguage})
 
-Translate the question and provide practical guidance for an auditor who speaks ${targetLanguageName}. Return a JSON object:
+Return a JSON object with ALL text in ${targetLanguageName} (except the JSON keys):
 {
-  "translatedQuestion": "The audit question translated to ${targetLanguageName}",
+  "translatedQuestion": "[ACTUAL TRANSLATION OF THE QUESTION IN ${targetLanguageName.toUpperCase()} - NOT IN ENGLISH]",
+  "guideline": "[A clear guideline in ${targetLanguageName} explaining what this audit item is checking and why it matters for workplace safety]",
   "stepsToCheck": [
-    "Step 1: Practical instruction in ${targetLanguageName} on how to verify this item",
-    "Step 2: What specific things to look for",
-    "Step 3: What to document if there's an issue",
-    "Additional relevant steps as needed"
+    "[Step 1 in ${targetLanguageName}: Specific action to verify this item]",
+    "[Step 2 in ${targetLanguageName}: What to look for or measure]",
+    "[Step 3 in ${targetLanguageName}: How to document findings]",
+    "[Additional steps as needed, all in ${targetLanguageName}]"
   ],
-  "keywords": ["Key terms in ${targetLanguageName} that the auditor should know"],
-  "tips": "Any additional tips or context in ${targetLanguageName} that would help the auditor"
+  "keywords": ["[Key safety terms in ${targetLanguageName}]"],
+  "tips": "[Additional tips in ${targetLanguageName} to help the auditor]"
 }
 
-Guidelines:
-- Translate naturally, not word-for-word
-- Steps should be practical and actionable for someone doing a physical inspection
+CRITICAL REQUIREMENTS:
+- translatedQuestion MUST be the actual translation of "${questionText}" in ${targetLanguageName}
+- guideline should explain the purpose and importance of this audit check
+- ALL text values must be written in ${targetLanguageName}, not English
+- Translate naturally and professionally, not word-for-word
+- Steps should be practical and actionable for physical inspection
 - Include specific things to look for, measure, or verify
-- Keep the safety/compliance context in mind
-- Use professional but accessible language
-- All output text should be in ${targetLanguageName}`;
+- Reference relevant safety standards or regulations where applicable`;
 
   const result = await model.generateContent(prompt);
   const response = result.response;
@@ -702,6 +708,7 @@ Guidelines:
   // Normalize the response to ensure consistent property names
   return {
     translatedQuestion: parsed.translatedQuestion || parsed.translated_question || parsed.question || questionText,
+    guideline: parsed.guideline || parsed.guidance_text || parsed.description || '',
     stepsToCheck: parsed.stepsToCheck || parsed.steps_to_check || parsed.steps || [],
     keywords: parsed.keywords || parsed.key_terms || [],
     tips: parsed.tips || parsed.tip || parsed.guidance || '',

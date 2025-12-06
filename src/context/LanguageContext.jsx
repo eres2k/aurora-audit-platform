@@ -233,6 +233,7 @@ const translations = {
 
     // Translation feature
     translatedQuestion: 'Translated Question',
+    guideline: 'Guideline',
     stepsToCheck: 'Steps to Check',
     translateToLocal: 'Translate to Local Language',
     translating: 'Translating...',
@@ -472,6 +473,7 @@ const translations = {
 
     // Translation feature
     translatedQuestion: 'Übersetzte Frage',
+    guideline: 'Richtlinie',
     stepsToCheck: 'Prüfschritte',
     translateToLocal: 'In lokale Sprache übersetzen',
     translating: 'Übersetze...',
@@ -681,6 +683,7 @@ const translations = {
     sources: 'Fuentes',
     relatedTopics: 'Temas Relacionados',
     translatedQuestion: 'Pregunta Traducida',
+    guideline: 'Directriz',
     stepsToCheck: 'Pasos a Verificar',
     translateToLocal: 'Traducir al Idioma Local',
     translating: 'Traduciendo...',
@@ -822,6 +825,7 @@ const translations = {
     policyAssistant: 'Assistant Politique',
     translateQuestion: 'Traduire la question',
     translatedQuestion: 'Question Traduite',
+    guideline: 'Directive',
     stepsToCheck: 'Étapes à Vérifier',
     translating: 'Traduction...',
     originalQuestion: 'Question Originale',
@@ -863,6 +867,7 @@ const translations = {
     high: 'Alta',
     translateQuestion: 'Traduci domanda',
     translatedQuestion: 'Domanda Tradotta',
+    guideline: 'Linea Guida',
     stepsToCheck: 'Passi da Verificare',
     translating: 'Traduzione...',
     loading: 'Caricamento...',
@@ -901,6 +906,7 @@ const translations = {
     high: 'Wysoki',
     translateQuestion: 'Przetłumacz pytanie',
     translatedQuestion: 'Przetłumaczone Pytanie',
+    guideline: 'Wytyczna',
     stepsToCheck: 'Kroki do Sprawdzenia',
     translating: 'Tłumaczenie...',
     loading: 'Ładowanie...',
@@ -939,6 +945,7 @@ const translations = {
     high: 'Alta',
     translateQuestion: 'Traduzir pergunta',
     translatedQuestion: 'Pergunta Traduzida',
+    guideline: 'Diretriz',
     stepsToCheck: 'Passos a Verificar',
     translating: 'Traduzindo...',
     loading: 'Carregando...',
@@ -977,6 +984,7 @@ const translations = {
     high: 'Ridicată',
     translateQuestion: 'Traduce întrebarea',
     translatedQuestion: 'Întrebare Tradusă',
+    guideline: 'Ghid',
     stepsToCheck: 'Pași de Verificat',
     translating: 'Se traduce...',
     loading: 'Se încarcă...',
@@ -1015,6 +1023,7 @@ const translations = {
     high: 'Yüksek',
     translateQuestion: 'Soruyu çevir',
     translatedQuestion: 'Çevrilmiş Soru',
+    guideline: 'Kılavuz',
     stepsToCheck: 'Kontrol Adımları',
     translating: 'Çevriliyor...',
     loading: 'Yükleniyor...',
@@ -1076,6 +1085,7 @@ const translations = {
     // Translation feature
     translateQuestion: 'Преведи питање',
     translatedQuestion: 'Преведено питање',
+    guideline: 'Смерница',
     stepsToCheck: 'Кораци за проверу',
     translating: 'Превођење...',
     loading: 'Учитавање...',
@@ -1137,6 +1147,7 @@ const translations = {
     // Translation feature
     translateQuestion: 'Isalin ang tanong',
     translatedQuestion: 'Naisaling Tanong',
+    guideline: 'Gabay',
     stepsToCheck: 'Mga Hakbang sa Pagsuri',
     translating: 'Nagsasalin...',
     loading: 'Naglo-load...',
