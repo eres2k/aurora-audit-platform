@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageCircle,
@@ -17,6 +17,114 @@ import {
 import toast from 'react-hot-toast';
 import { aiApi } from '../../utils/api';
 import { useLanguage } from '../../context/LanguageContext';
+
+// Simple markdown renderer for policy responses
+const renderMarkdown = (text) => {
+  if (!text) return null;
+
+  const lines = text.split('\n');
+  const elements = [];
+  let currentListItems = [];
+  let listKey = 0;
+
+  const flushList = () => {
+    if (currentListItems.length > 0) {
+      elements.push(
+        <ul key={`list-${listKey++}`} className="my-2 ml-4 space-y-1.5">
+          {currentListItems}
+        </ul>
+      );
+      currentListItems = [];
+    }
+  };
+
+  const parseInlineFormatting = (text) => {
+    // Parse bold (**text**) and return React elements
+    const parts = [];
+    let remaining = text;
+    let partKey = 0;
+
+    while (remaining.length > 0) {
+      const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+      if (boldMatch) {
+        const beforeBold = remaining.substring(0, boldMatch.index);
+        if (beforeBold) {
+          parts.push(<span key={partKey++}>{beforeBold}</span>);
+        }
+        parts.push(
+          <strong key={partKey++} className="font-semibold text-slate-800 dark:text-white">
+            {boldMatch[1]}
+          </strong>
+        );
+        remaining = remaining.substring(boldMatch.index + boldMatch[0].length);
+      } else {
+        parts.push(<span key={partKey++}>{remaining}</span>);
+        break;
+      }
+    }
+
+    return parts.length > 0 ? parts : text;
+  };
+
+  lines.forEach((line, index) => {
+    const trimmedLine = line.trim();
+
+    // Empty line - flush list and add spacing
+    if (!trimmedLine) {
+      flushList();
+      return;
+    }
+
+    // Check for list items (-, *, •, o followed by space/tab)
+    const listMatch = trimmedLine.match(/^[-*•o]\s+(.+)$/);
+    if (listMatch) {
+      currentListItems.push(
+        <li key={`item-${index}`} className="flex items-start gap-2 text-slate-700 dark:text-slate-200">
+          <span className="text-teal-500 mt-0.5 flex-shrink-0">•</span>
+          <span>{parseInlineFormatting(listMatch[1])}</span>
+        </li>
+      );
+      return;
+    }
+
+    // Indented list items (lines starting with multiple spaces/tabs followed by list marker)
+    const indentedListMatch = trimmedLine.match(/^[-*•o]\s+(.+)$/);
+    const hasLeadingWhitespace = line.match(/^\s{2,}/);
+    if (hasLeadingWhitespace && indentedListMatch) {
+      currentListItems.push(
+        <li key={`item-${index}`} className="flex items-start gap-2 text-slate-700 dark:text-slate-200 ml-4">
+          <span className="text-teal-400 mt-0.5 flex-shrink-0">◦</span>
+          <span>{parseInlineFormatting(indentedListMatch[1])}</span>
+        </li>
+      );
+      return;
+    }
+
+    // Flush any pending list before adding paragraph
+    flushList();
+
+    // Regular paragraph or heading-like text
+    const isHeading = trimmedLine.match(/^\*\*[^*]+\*\*:?$/);
+    if (isHeading) {
+      elements.push(
+        <p key={index} className="mt-3 mb-1 font-semibold text-slate-800 dark:text-white">
+          {parseInlineFormatting(trimmedLine)}
+        </p>
+      );
+    } else {
+      elements.push(
+        <p key={index} className="text-slate-700 dark:text-slate-200 leading-relaxed">
+          {parseInlineFormatting(trimmedLine)}
+        </p>
+      );
+    }
+  });
+
+  // Flush any remaining list items
+  flushList();
+
+  return <div className="space-y-1">{elements}</div>;
+};
 
 // Regulation links mapping
 const REGULATION_LINKS = {
@@ -156,7 +264,7 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
             ...prev,
             {
               role: 'assistant',
-              content: 'I apologize, but I encountered an error processing your question. Please try again or rephrase your question.',
+              content: t('policyErrorMessage'),
               sources: [],
               relatedTopics: [],
             },
@@ -222,12 +330,12 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
         ...prev,
         {
           role: 'assistant',
-          content: 'I apologize, but I encountered an error processing your question. Please try again or rephrase your question.',
+          content: t('policyErrorMessage'),
           sources: [],
           relatedTopics: [],
         },
       ]);
-      toast.error('Failed to get response');
+      toast.error(t('failedToGetResponse'));
     } finally {
       setIsLoading(false);
     }
@@ -335,11 +443,15 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
                   )}
 
                   <div className={message.role === 'user' ? '' : 'px-4 pb-3'}>
-                    <p className={`text-sm whitespace-pre-wrap ${
-                      message.role === 'user' ? '' : 'text-slate-700 dark:text-slate-200'
-                    }`}>
-                      {message.content}
-                    </p>
+                    {message.role === 'user' ? (
+                      <p className="text-sm whitespace-pre-wrap">
+                        {message.content}
+                      </p>
+                    ) : (
+                      <div className="text-sm">
+                        {renderMarkdown(message.content)}
+                      </div>
+                    )}
 
                     {/* Sources with links */}
                     {message.sources && message.sources.length > 0 && (
