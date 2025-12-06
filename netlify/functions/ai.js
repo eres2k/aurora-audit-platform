@@ -389,7 +389,7 @@ AUSTRIAN WORKPLACE SAFETY REGULATIONS (ASchG - ArbeitnehmerInnenschutzgesetz)
 `;
 
 // Policy compliance chatbot
-const handlePolicyChat = async (question, conversationHistory = []) => {
+const handlePolicyChat = async (question, conversationHistory = [], targetLanguage = 'en', targetLanguageName = 'English') => {
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash',
     generationConfig: {
@@ -406,7 +406,15 @@ const handlePolicyChat = async (question, conversationHistory = []) => {
     });
   }
 
+  // Language-specific instructions
+  const isEnglish = targetLanguage === 'en';
+  const languageInstruction = isEnglish
+    ? 'Respond in English.'
+    : `IMPORTANT: You MUST respond in ${targetLanguageName} (${targetLanguage}). ALL text in the JSON response (answer, sources, relatedTopics, disclaimer) MUST be written in ${targetLanguageName}. Do NOT respond in English.`;
+
   const prompt = `You are AuditHub's Policy Compliance Assistant, an expert on Austrian workplace safety regulations (ASchG - ArbeitnehmerInnenschutzgesetz), OSHA standards, and general industrial safety best practices.
+
+${languageInstruction}
 
 ${AUSTRIA_SAFETY_KNOWLEDGE}
 
@@ -417,20 +425,24 @@ Current question from the auditor:
 
 Provide a helpful, accurate response based on the safety regulations above. Return a JSON object:
 {
-  "answer": "Your detailed response to the question. Be specific with measurements, requirements, and references. If citing a regulation, mention it (e.g., 'According to ASchG...'). Keep the response practical and actionable.",
-  "sources": ["List of relevant regulation references used"],
-  "relatedTopics": ["2-3 related topics the auditor might want to know about"],
+  "answer": "Your detailed response to the question in ${targetLanguageName}. Be specific with measurements, requirements, and references. If citing a regulation, mention it (e.g., 'According to ASchG...' or the ${targetLanguageName} equivalent). Keep the response practical and actionable. Format the answer with clear structure using bullet points (•) or numbered lists where appropriate for better readability.",
+  "sources": ["List of relevant regulation references - keep regulation names in their original form (e.g., 'ASchG - ArbeitnehmerInnenschutzgesetz', 'TRVB', 'ÖNORM Z 1020') as these will be used for linking"],
+  "relatedTopics": ["2-3 related topics in ${targetLanguageName} the auditor might want to know about"],
   "confidence": "high" | "medium" | "low",
-  "disclaimer": "Add a disclaimer if the answer requires verification with local authorities or if regulations may have changed"
+  "disclaimer": "Add a disclaimer in ${targetLanguageName} if the answer requires verification with local authorities or if regulations may have changed. Always include a note about verifying with local authorities."
 }
 
 Guidelines:
+- ${isEnglish ? 'Respond in English' : `ALL response text MUST be in ${targetLanguageName}`}
 - Always cite specific measurements and requirements when available
 - If the question is outside the scope of workplace safety, politely redirect
 - If unsure, indicate low confidence and recommend consulting local authorities
 - Be practical - auditors need actionable information
 - Reference Austrian ASchG where applicable, but also mention if EU or OSHA standards differ
-- Keep answers concise but complete`;
+- Keep answers concise but complete
+- Always include a disclaimer about verifying regulations with local authorities
+- Format the answer with clear bullet points or numbered lists for better readability
+- Sources should always include the full regulation name (e.g., "ASchG - ArbeitnehmerInnenschutzgesetz" not just "ASchG")`;
 
   const result = await model.generateContent(prompt);
   const response = result.response;
@@ -856,7 +868,7 @@ export const handler = async (event, context) => {
         if (!question) {
           return jsonResponse({ error: 'Question is required for policy chat' }, 400);
         }
-        result = await handlePolicyChat(question, conversationHistory);
+        result = await handlePolicyChat(question, conversationHistory, targetLanguage || 'en', targetLanguageName || 'English');
         break;
 
       case 'generate_pdf_insights':

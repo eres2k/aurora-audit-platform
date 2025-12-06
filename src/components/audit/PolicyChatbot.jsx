@@ -11,20 +11,67 @@ import {
   ChevronRight,
   HelpCircle,
   Shield,
+  ExternalLink,
+  Tag,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { aiApi } from '../../utils/api';
+import { useLanguage } from '../../context/LanguageContext';
+
+// Regulation links mapping
+const REGULATION_LINKS = {
+  'ASchG': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910',
+  'ASchG - ArbeitnehmerInnenschutzgesetz': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910',
+  'ArbeitnehmerInnenschutzgesetz': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910',
+  'TRVB': 'https://www.trvb.at/',
+  'TRVB - Technische Richtlinien Vorbeugender Brandschutz': 'https://www.trvb.at/',
+  'Fire safety': 'https://www.trvb.at/',
+  'Brandschutz': 'https://www.trvb.at/',
+  'Emergency escape routes': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910&Paragraf=24',
+  'Fluchtwegeplanung': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910&Paragraf=24',
+  'PPE': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910&Paragraf=69',
+  'PSA': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910&Paragraf=69',
+  'ÖNORM Z 1020': 'https://www.austrian-standards.at/',
+  'EN ISO 20345': 'https://www.iso.org/standard/51036.html',
+  'Housekeeping': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910&Paragraf=15',
+  '5S Principles': 'https://www.lean.org/lexicon-terms/5s/',
+  '5S': 'https://www.lean.org/lexicon-terms/5s/',
+  'OSHA': 'https://www.osha.gov/',
+  'Walkway requirements': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910&Paragraf=23',
+  'Verkehrswege': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910&Paragraf=23',
+  'Ergonomics': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910&Paragraf=60',
+  'Manual handling': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910&Paragraf=60',
+  'Electrical safety': 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10008910&Paragraf=44',
+};
+
+// Function to get link for a source
+const getSourceLink = (source) => {
+  // Check for exact match first
+  if (REGULATION_LINKS[source]) {
+    return REGULATION_LINKS[source];
+  }
+  // Check for partial match
+  for (const [key, url] of Object.entries(REGULATION_LINKS)) {
+    if (source.toLowerCase().includes(key.toLowerCase()) ||
+        key.toLowerCase().includes(source.toLowerCase())) {
+      return url;
+    }
+  }
+  return null;
+};
 
 export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) {
+  const { t, language, currentLanguage } = useLanguage();
+
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: 'Hello! I\'m the AuditHub Policy Assistant. I can help you with questions about Austrian workplace safety regulations (ASchG), OSHA standards, and general safety compliance. What would you like to know?',
+      content: t('policyGreeting'),
       sources: [],
       relatedTopics: [
-        'Walkway clearance requirements',
-        'Fire extinguisher placement',
-        'PPE requirements',
+        t('walkwayRequirements'),
+        t('fireExtinguisherPlacement'),
+        t('ppeRequirements'),
       ],
     },
   ]);
@@ -33,6 +80,24 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Update greeting when language changes
+  useEffect(() => {
+    setMessages(prev => {
+      if (prev.length === 1 && prev[0].role === 'assistant') {
+        return [{
+          ...prev[0],
+          content: t('policyGreeting'),
+          relatedTopics: [
+            t('walkwayRequirements'),
+            t('fireExtinguisherPlacement'),
+            t('ppeRequirements'),
+          ],
+        }];
+      }
+      return prev;
+    });
+  }, [language, t]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -61,7 +126,12 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
             content: m.content,
           }));
 
-          const response = await aiApi.policyChat(initialMessage, conversationHistory);
+          const response = await aiApi.policyChat(
+            initialMessage,
+            conversationHistory,
+            language,
+            currentLanguage?.name || 'English'
+          );
 
           if (response.success && response.data) {
             const { answer, sources, relatedTopics, confidence, disclaimer } = response.data;
@@ -98,7 +168,7 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
 
       sendInitialMessage();
     }
-  }, [isOpen, initialMessage, hasProcessedInitialMessage, messages]);
+  }, [isOpen, initialMessage, hasProcessedInitialMessage, messages, language, currentLanguage]);
 
   // Reset when modal closes
   useEffect(() => {
@@ -122,7 +192,12 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
         content: m.content,
       }));
 
-      const response = await aiApi.policyChat(userMessage, conversationHistory);
+      const response = await aiApi.policyChat(
+        userMessage,
+        conversationHistory,
+        language,
+        currentLanguage?.name || 'English'
+      );
 
       if (response.success && response.data) {
         const { answer, sources, relatedTopics, confidence, disclaimer } = response.data;
@@ -170,6 +245,19 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
     inputRef.current?.focus();
   };
 
+  const getConfidenceLabel = (confidence) => {
+    switch (confidence) {
+      case 'high':
+        return t('highConfidence');
+      case 'medium':
+        return t('mediumConfidence');
+      case 'low':
+        return t('lowConfidence');
+      default:
+        return confidence;
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -196,9 +284,9 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
                 </div>
                 <div>
                   <h2 className="font-semibold text-white flex items-center gap-2">
-                    Policy Assistant
+                    {t('policyAssistant')}
                   </h2>
-                  <p className="text-xs text-white/80">Austrian ASchG & OSHA Guidelines</p>
+                  <p className="text-xs text-white/80">{t('policySubtitle')}</p>
                 </div>
               </div>
               <button
@@ -240,7 +328,7 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
                             ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
                             : 'bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300'
                         }`}>
-                          {message.confidence} confidence
+                          {getConfidenceLabel(message.confidence)}
                         </span>
                       )}
                     </div>
@@ -253,31 +341,47 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
                       {message.content}
                     </p>
 
-                    {/* Sources */}
+                    {/* Sources with links */}
                     {message.sources && message.sources.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
-                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center gap-1">
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1">
                           <BookOpen size={12} />
-                          Sources
+                          {t('sources')}
                         </p>
-                        <div className="flex flex-wrap gap-1">
-                          {message.sources.map((source, i) => (
-                            <span
-                              key={i}
-                              className="text-xs px-2 py-0.5 bg-slate-200 dark:bg-slate-600 rounded text-slate-600 dark:text-slate-300"
-                            >
-                              {source}
-                            </span>
-                          ))}
+                        <div className="flex flex-wrap gap-1.5">
+                          {message.sources.map((source, i) => {
+                            const link = getSourceLink(source);
+                            return link ? (
+                              <a
+                                key={i}
+                                href={link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-md hover:bg-teal-100 dark:hover:bg-teal-900/50 transition-colors cursor-pointer"
+                              >
+                                <Tag size={10} />
+                                {source}
+                                <ExternalLink size={10} />
+                              </a>
+                            ) : (
+                              <span
+                                key={i}
+                                className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-slate-200 dark:bg-slate-600 rounded-md text-slate-600 dark:text-slate-300"
+                              >
+                                <Tag size={10} />
+                                {source}
+                              </span>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
 
                     {/* Related Topics */}
                     {message.relatedTopics && message.relatedTopics.length > 0 && (
-                      <div className="mt-3">
+                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
                         <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
-                          Related topics:
+                          {t('relatedTopics')}:
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {message.relatedTopics.map((topic, i) => (
@@ -296,11 +400,13 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
 
                     {/* Disclaimer */}
                     {message.disclaimer && (
-                      <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-start gap-2">
-                        <AlertCircle size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-700 dark:text-amber-300">
-                          {message.disclaimer}
-                        </p>
+                      <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800/30">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-amber-700 dark:text-amber-300">
+                            {message.disclaimer}
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -318,7 +424,7 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
                   <div className="flex items-center gap-2">
                     <Loader2 size={16} className="animate-spin text-teal-500" />
                     <span className="text-sm text-slate-500 dark:text-slate-400">
-                      Searching regulations...
+                      {t('searchingRegulations')}
                     </span>
                   </div>
                 </div>
@@ -332,14 +438,14 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
           {messages.length <= 1 && (
             <div className="px-4 pb-2">
               <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
-                Common questions:
+                {t('commonQuestions')}:
               </p>
               <div className="flex flex-wrap gap-2">
                 {[
-                  'What is the minimum walkway width?',
-                  'Fire extinguisher placement rules?',
-                  'Maximum lifting weight?',
-                  'Emergency exit requirements?',
+                  t('walkwayWidthQuestion'),
+                  t('fireExtinguisherQuestion'),
+                  t('maxLiftingQuestion'),
+                  t('emergencyExitQuestion'),
                 ].map((q, i) => (
                   <button
                     key={i}
@@ -364,7 +470,7 @@ export default function PolicyChatbot({ isOpen, onClose, initialMessage = '' }) 
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Ask about safety regulations..."
+                  placeholder={t('askAboutRegulations')}
                   disabled={isLoading}
                   className="w-full px-4 py-3 pr-12 rounded-xl bg-slate-100 dark:bg-slate-700 border-none focus:ring-2 focus:ring-teal-500/50 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none text-sm"
                 />
