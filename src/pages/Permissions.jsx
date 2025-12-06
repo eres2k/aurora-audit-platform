@@ -220,7 +220,7 @@ const ROLES = [
 ];
 
 export default function Permissions() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, isAdmin } = useAuth();
   const { t } = useLanguage();
   const [roles, setRoles] = useState(ROLES);
   const [selectedRole, setSelectedRole] = useState(null);
@@ -229,10 +229,6 @@ export default function Permissions() {
   );
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-
-  // Check if current user is admin
-  const isAdmin = currentUser?.app_metadata?.role === 'Admin' ||
-                  currentUser?.user_metadata?.role === 'Admin';
 
   // Toggle category expansion
   const toggleCategory = (category) => {

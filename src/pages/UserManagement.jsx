@@ -74,7 +74,7 @@ const getRoleConfig = (roleId) => {
 };
 
 export default function UserManagement() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, isAdmin } = useAuth();
   const { t } = useLanguage();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -84,10 +84,6 @@ export default function UserManagement() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingRole, setEditingRole] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-
-  // Check if current user is admin
-  const isAdmin = currentUser?.app_metadata?.role === 'Admin' ||
-                  currentUser?.user_metadata?.role === 'Admin';
 
   // Load users
   const loadUsers = async () => {

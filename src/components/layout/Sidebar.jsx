@@ -38,13 +38,9 @@ const adminNavItems = [
 ];
 
 export default function Sidebar({ isOpen, onClose }) {
-  const { logout, user, selectedStation } = useAuth();
+  const { logout, user, selectedStation, isAdmin } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
-
-  // Check if user is admin
-  const isAdmin = user?.app_metadata?.role === 'Admin' ||
-                  user?.user_metadata?.role === 'Admin';
 
   const handleLogout = () => {
     logout();
