@@ -234,6 +234,7 @@ export default function QuestionItem({
         const data = response.data;
         const normalizedResult = {
           translatedQuestion: data.translatedQuestion || data.translated_question || data.question || question.text,
+          guideline: data.guideline || data.guidance_text || data.description || '',
           stepsToCheck: data.stepsToCheck || data.steps_to_check || data.steps || [],
           keywords: data.keywords || data.key_terms || [],
           tips: data.tips || data.tip || data.guidance || '',
@@ -663,6 +664,18 @@ export default function QuestionItem({
                       {translationResult.translatedQuestion}
                     </p>
                   </div>
+
+                  {/* Guideline */}
+                  {translationResult.guideline && (
+                    <div className="mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                      <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1 uppercase">
+                        {t('guideline') || 'Guideline'}
+                      </p>
+                      <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                        {translationResult.guideline}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Steps to Check */}
                   {translationResult.stepsToCheck && translationResult.stepsToCheck.length > 0 && (
