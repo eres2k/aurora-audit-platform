@@ -757,9 +757,8 @@ export default function NewAudit() {
                     ) : (
                       <>
                         <Loader2 size={16} className="animate-spin text-purple-600 dark:text-purple-400" />
-                        <span className="text-sm font-medium text-purple-700 dark:text-purple-300 flex items-center gap-1">
-                          <Sparkles size={14} />
-                          Processing with Gemini AI...
+                        <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                          Processing...
                         </span>
                       </>
                     )}

@@ -254,7 +254,7 @@ export default function AuditDetail() {
                     <div className="flex items-center gap-2">
                       <Sparkles size={18} className="text-purple-500" />
                       <span className="font-medium text-slate-900 dark:text-white">
-                        Include Audit Insights
+                        Include Insights Summary
                       </span>
                     </div>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -288,7 +288,7 @@ export default function AuditDetail() {
         )}
       </AnimatePresence>
 
-      {/* AuditHub Insights */}
+      {/* Insights Summary */}
       <AnimatePresence>
         {insights && (
           <motion.div
@@ -308,7 +308,7 @@ export default function AuditDetail() {
                   </div>
                   <div className="text-left">
                     <h3 className="font-semibold text-slate-900 dark:text-white">
-                      AuditHub Insights
+                      Insights Summary
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       Executive Summary
