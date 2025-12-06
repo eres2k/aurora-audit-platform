@@ -305,8 +305,8 @@ export default function QuestionItem({
 
           // Auto-fill notes with analysis description
           if (onNoteChange && analysis.description) {
-            const aiNote = `[Safety Analysis] ${analysis.description}${analysis.recommendation ? `\n\nRecommendation: ${analysis.recommendation}` : ''}`;
-            onNoteChange(aiNote);
+            const analysisNote = `${analysis.description}${analysis.recommendation ? `\n\nRecommendation: ${analysis.recommendation}` : ''}`;
+            onNoteChange(analysisNote);
           }
         } else {
           toast.success('Analysis complete - No hazards detected');
@@ -726,19 +726,25 @@ export default function QuestionItem({
 
             {renderInput()}
 
-            {/* Note field for failed items */}
-            {value === 'fail' && (
+            {/* Note/Comment field - always visible, mandatory only for fail */}
+            {value && (
               <div className="mt-4 animate-in fade-in">
-                <label className="text-xs font-bold text-red-600 uppercase mb-2 block">
-                  Describe the issue
+                <label className={`text-xs font-bold uppercase mb-2 block ${
+                  value === 'fail' ? 'text-red-600' : 'text-slate-500 dark:text-slate-400'
+                }`}>
+                  {value === 'fail' ? 'Describe the issue *' : 'Add comment (optional)'}
                 </label>
                 <div className="relative">
                   <textarea
                     value={note || ''}
                     onChange={(e) => onNoteChange && onNoteChange(e.target.value)}
-                    placeholder="Describe the problem..."
+                    placeholder={value === 'fail' ? 'Describe the problem...' : 'Add any observations or comments...'}
                     rows={2}
-                    className="w-full text-sm p-3 pr-24 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-200 placeholder:text-red-300 dark:placeholder:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
+                    className={`w-full text-sm p-3 pr-24 rounded-xl focus:outline-none focus:ring-2 ${
+                      value === 'fail'
+                        ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 placeholder:text-red-300 dark:placeholder:text-red-400 focus:ring-red-300'
+                        : 'bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-amazon-orange/50'
+                    }`}
                   />
                   {/* Button group for voice input and enhance note */}
                   <div className="absolute right-2 top-2 flex gap-1 z-10">
@@ -761,7 +767,7 @@ export default function QuestionItem({
                         whileTap={{ scale: 0.9 }}
                         onClick={handleEnhanceNote}
                         className="w-8 h-8 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white flex items-center justify-center shadow-sm transition-colors"
-                        title="Enhance Note with AI"
+                        title="Enhance note"
                       >
                         <Wand2 size={16} />
                       </motion.button>
@@ -778,7 +784,7 @@ export default function QuestionItem({
                 {note && note.trim().length >= 5 && !isEnhancingNote && (
                   <p className="mt-1 text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
                     <Wand2 size={10} />
-                    Click the wand icon to enhance your note with AI
+                    Click the wand icon to enhance your note
                   </p>
                 )}
               </div>
@@ -845,8 +851,8 @@ export default function QuestionItem({
                       )}
                       <div>
                         <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                          <Sparkles size={12} />
-                          Safety Analysis
+                          <Shield size={12} />
+                          Photo Analysis
                         </p>
                         <p className={`text-sm font-semibold ${
                           safetyAnalysis.hazardDetected
@@ -870,9 +876,26 @@ export default function QuestionItem({
                   </div>
 
                   {safetyAnalysis.description && (
-                    <p className="mt-3 text-sm text-slate-700 dark:text-slate-300">
-                      {safetyAnalysis.description}
-                    </p>
+                    <div className="mt-3">
+                      <p className="text-sm text-slate-700 dark:text-slate-300">
+                        {safetyAnalysis.description}
+                      </p>
+                      {/* Use as Finding button */}
+                      {onNoteChange && (
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            const finding = safetyAnalysis.description + (safetyAnalysis.recommendation ? `\n\nRecommendation: ${safetyAnalysis.recommendation}` : '');
+                            onNoteChange(finding);
+                            toast.success('Analysis copied to findings');
+                          }}
+                          className="mt-2 text-xs px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center gap-1"
+                        >
+                          <ClipboardList size={12} />
+                          Use as Finding
+                        </motion.button>
+                      )}
+                    </div>
                   )}
 
                   {safetyAnalysis.recommendation && (
@@ -989,10 +1012,10 @@ export default function QuestionItem({
                       </div>
                       <div>
                         <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                          Smart Voice Assistant
+                          Voice Assistant
                         </p>
                         <p className="text-sm text-slate-600 dark:text-slate-300">
-                          AI analyzed your voice note
+                          Your voice note was processed
                         </p>
                       </div>
                     </div>
