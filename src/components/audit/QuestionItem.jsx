@@ -230,7 +230,15 @@ export default function QuestionItem({
       );
 
       if (response.success && response.data) {
-        setTranslationResult(response.data);
+        // Normalize the response data to handle different property naming conventions
+        const data = response.data;
+        const normalizedResult = {
+          translatedQuestion: data.translatedQuestion || data.translated_question || data.question || question.text,
+          stepsToCheck: data.stepsToCheck || data.steps_to_check || data.steps || [],
+          keywords: data.keywords || data.key_terms || [],
+          tips: data.tips || data.tip || data.guidance || '',
+        };
+        setTranslationResult(normalizedResult);
         setTranslationLanguage(language); // Track which language this translation is for
         toast.success(language === 'en' ? 'Guidance loaded' : t('translatedQuestion'));
       } else {
