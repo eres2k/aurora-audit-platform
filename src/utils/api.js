@@ -287,15 +287,19 @@ export const aiApi = {
    * Ask the policy compliance chatbot a question
    * @param {string} question - The user's question about safety policies
    * @param {Array} conversationHistory - Previous messages for context [{role, content}]
+   * @param {string} targetLanguage - The target language code for the response (e.g., 'de', 'en')
+   * @param {string} targetLanguageName - The full name of the target language (e.g., 'Deutsch', 'English')
    * @returns {Promise<Object>} AI response with answer, sources, and related topics
    */
-  policyChat: async (question, conversationHistory = []) => {
+  policyChat: async (question, conversationHistory = [], targetLanguage = 'en', targetLanguageName = 'English') => {
     return apiRequest('ai', {
       method: 'POST',
       body: JSON.stringify({
         action: 'policy_chat',
         question: question,
         conversationHistory: conversationHistory,
+        targetLanguage: targetLanguage,
+        targetLanguageName: targetLanguageName,
       }),
     });
   },
